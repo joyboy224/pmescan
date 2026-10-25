@@ -1,9 +1,15 @@
 """Point d'entrée en ligne de commande de pmescan."""
 
+import asyncio
+import dataclasses
+import json
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _version_installee
 
 import typer
+
+from pmescan.modele import Cible, Resultat
+from pmescan.scanner import scanner
 
 app = typer.Typer(
     name="pmescan",
@@ -39,7 +45,33 @@ def principal(
         help="Affiche la version et quitte.",
     ),
 ) -> None:
-    """pmescan — scanner de sécurité pour PME francophones.
+    """pmescan — scanner de sécurité pour PME francophones."""
 
-    Les commandes de scan seront ajoutées aux étapes suivantes.
-    """
+
+def _resultat_en_dict(resultat: Resultat) -> dict[str, object]:
+    """Convertit un Resultat en dictionnaire sérialisable en JSON."""
+    donnees = dataclasses.asdict(resultat)
+    donnees["gravite"] = resultat.gravite.value
+    return donnees
+
+
+@app.command()
+def scan(
+    domaine: str = typer.Argument(..., help="Domaine à analyser, ex. exemple.com."),
+    mode: str = typer.Option(
+        "passif", "--mode", help="Mode de scan : passif, actif ou agressif."
+    ),
+    format_json: bool = typer.Option(
+        False, "--json", help="Affiche les résultats agrégés au format JSON."
+    ),
+) -> None:
+    """Analyse un domaine (TLS et en-têtes) et affiche les résultats."""
+    cible = Cible(domaine=domaine, mode=mode)
+    resultats = asyncio.run(scanner(cible))
+    if format_json:
+        charge = [_resultat_en_dict(resultat) for resultat in resultats]
+        typer.echo(json.dumps(charge, ensure_ascii=False, indent=2))
+    else:
+        for resultat in resultats:
+            etat = "OK" if resultat.reussi else "PROBLEME"
+            typer.echo(f"[{etat}] {resultat.identifiant} ({resultat.gravite.value})")

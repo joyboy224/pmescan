@@ -1,0 +1,15 @@
+{
+  "statut": 200,
+  "entetes": {
+    "content-type": "text/html; charset=utf-8",
+    "strict-transport-security": "max-age=63072000; includeSubDomains",
+    "content-security-policy": "default-src 'self'",
+    "x-frame-options": "DENY",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
+    "permissions-policy": "geolocation=()"
+  },
+  "cookies": [
+    "sessionid=abc123; Path=/; Secure; HttpOnly; SameSite=Strict"
+  ]
+}

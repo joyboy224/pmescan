@@ -1,0 +1,10 @@
+{
+  "statut": 200,
+  "entetes": {
+    "content-type": "text/html; charset=utf-8",
+    "server": "Apache/2.4.41 (Ubuntu)"
+  },
+  "cookies": [
+    "sessionid=abc123; Path=/"
+  ]
+}
