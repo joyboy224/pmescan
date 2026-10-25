@@ -1,0 +1,25 @@
+# Environnements Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Build / distribution
+build/
+dist/
+*.egg-info/
+
+# Tests / outils
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Rapports générés
+*.pdf
+consent.log
+
+# Éditeurs / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
