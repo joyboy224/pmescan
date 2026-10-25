@@ -9,6 +9,7 @@ from importlib.metadata import version as _version_installee
 import typer
 
 from pmescan.modele import Cible, Resultat
+from pmescan.notation import calculer_note
 from pmescan.scanner import scanner
 
 app = typer.Typer(
@@ -65,13 +66,22 @@ def scan(
         False, "--json", help="Affiche les résultats agrégés au format JSON."
     ),
 ) -> None:
-    """Analyse un domaine (TLS et en-têtes) et affiche les résultats."""
+    """Analyse un domaine et affiche les résultats.
+
+    Le scan couvre TLS, en-têtes, DNS/messagerie, et en mode actif les fichiers exposés.
+    """
     cible = Cible(domaine=domaine, mode=mode)
     resultats = asyncio.run(scanner(cible))
+    score, note = calculer_note(resultats)
     if format_json:
-        charge = [_resultat_en_dict(resultat) for resultat in resultats]
+        charge: dict[str, object] = {
+            "note": note,
+            "score": score,
+            "resultats": [_resultat_en_dict(resultat) for resultat in resultats],
+        }
         typer.echo(json.dumps(charge, ensure_ascii=False, indent=2))
     else:
         for resultat in resultats:
             etat = "OK" if resultat.reussi else "PROBLEME"
             typer.echo(f"[{etat}] {resultat.identifiant} ({resultat.gravite.value})")
+        typer.echo(f"Note globale : {note} ({score}/100)")

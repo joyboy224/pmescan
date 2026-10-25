@@ -39,10 +39,16 @@ def test_cli_scan_json_produit_du_json_valide(monkeypatch):
 
     assert resultat.exit_code == 0
     charge = json.loads(resultat.stdout)
-    assert isinstance(charge, list)
-    assert charge[0]["identifiant"] == "entete_hsts_absent"
-    assert charge[0]["gravite"] == "moyenne"
-    assert charge[0]["reussi"] is False
+    # La CLI renvoie désormais un OBJET agrégé {note, score, resultats}, plus une liste.
+    assert isinstance(charge, dict)
+    # Une seule MOYENNE non réussie : 100 - 10 = 90 -> note A.
+    assert charge["score"] == 90
+    assert charge["note"] == "A"
+    resultats = charge["resultats"]
+    assert isinstance(resultats, list)
+    assert resultats[0]["identifiant"] == "entete_hsts_absent"
+    assert resultats[0]["gravite"] == "moyenne"
+    assert resultats[0]["reussi"] is False
 
 
 def test_cli_scan_texte_affiche_etat_probleme(monkeypatch):

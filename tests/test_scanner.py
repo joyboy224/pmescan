@@ -41,10 +41,10 @@ class VerificationQuiLeve(Verification):
 
 
 def test_selection_mode_passif_retient_les_checks_passifs():
-    """En mode passif, les deux vérifications TLS et en-têtes (passives) sont retenues."""
+    """En mode passif, les vérifications passives (TLS, en-têtes, DNS/mail) sont retenues."""
     verifications = selectionner_verifications("passif")
     noms = {v.nom for v in verifications}
-    assert noms == {"tls", "entetes"}
+    assert noms == {"tls", "entetes", "dns_mail"}
 
 
 def test_scanner_mode_passif_ignore_les_checks_actifs(monkeypatch):

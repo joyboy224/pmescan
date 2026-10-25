@@ -3,7 +3,9 @@
 import asyncio
 
 from pmescan.checks.base import Verification
+from pmescan.checks.dns_mail import VerificationDnsMail
 from pmescan.checks.entetes import VerificationEntetes
+from pmescan.checks.exposes import VerificationFichiersExposes
 from pmescan.checks.tls import VerificationTls
 from pmescan.modele import Cible, Gravite, Resultat
 
@@ -14,6 +16,8 @@ _ORDRE_MODES: dict[str, int] = {"passif": 0, "actif": 1, "agressif": 2}
 VERIFICATIONS: list[Verification] = [
     VerificationTls(),
     VerificationEntetes(),
+    VerificationDnsMail(),
+    VerificationFichiersExposes(),
 ]
 
 

@@ -1,0 +1,265 @@
+# Textes vulgarisés par identifiant de problème (français).
+# Une entrée par identifiant non réussi produit par les vérifications.
+# Champs : titre, risque, qui_corrige (hebergeur|developpeur|gerant), effort, action.
+
+# --- TLS -------------------------------------------------------------------
+
+tls_erreur_connexion:
+  titre: "Impossible de tester la sécurité du certificat"
+  risque: >
+    Le scanner n'a pas réussi à se connecter en HTTPS au site. La sécurité du
+    chiffrement n'a pas pu être vérifiée : un problème peut passer inaperçu.
+  qui_corrige: "hebergeur"
+  effort: "15 min"
+  action: "Vérifier que le site répond bien en HTTPS, puis relancer l'analyse."
+
+tls_injoignable:
+  titre: "Serveur HTTPS injoignable"
+  risque: >
+    Le site n'a pas répondu sur le port HTTPS pendant l'analyse. Vos visiteurs
+    peuvent eux aussi rencontrer des coupures d'accès au site sécurisé.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Vérifier que le serveur web écoute bien en HTTPS et qu'aucun pare-feu ne bloque le port 443."
+
+tls_expire:
+  titre: "Certificat de sécurité expiré"
+  risque: >
+    Le certificat HTTPS de votre site a expiré. Les navigateurs affichent une
+    grosse alerte rouge et beaucoup de visiteurs quittent le site aussitôt.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Renouveler immédiatement le certificat (Let's Encrypt est gratuit) et activer le renouvellement automatique."
+
+tls_expiration_proche:
+  titre: "Certificat de sécurité bientôt expiré"
+  risque: >
+    Le certificat HTTPS arrive à expiration dans moins d'un mois. Passé ce
+    délai, le site affichera une alerte de sécurité aux visiteurs.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Renouveler le certificat sans attendre et mettre en place le renouvellement automatique."
+
+tls_protocole_obsolete:
+  titre: "Protocoles de chiffrement obsolètes activés"
+  risque: >
+    Le site accepte encore de vieux protocoles (SSL, TLS 1.0/1.1) connus pour
+    être cassables. Des données échangées pourraient être déchiffrées.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Désactiver SSLv2, SSLv3, TLS 1.0 et 1.1 ; n'autoriser que TLS 1.2 et 1.3."
+
+tls_chiffrement_faible:
+  titre: "Chiffrements faibles autorisés"
+  risque: >
+    Le serveur propose des algorithmes de chiffrement faibles. Un attaquant
+    bien équipé pourrait intercepter et lire des échanges censés être protégés.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Retirer les suites de chiffrement faibles de la configuration du serveur web."
+
+tls_redirection_absente:
+  titre: "Pas de redirection automatique vers HTTPS"
+  risque: >
+    Le site reste accessible en HTTP non chiffré. Les visiteurs qui tapent
+    l'adresse sans « https » naviguent sans protection, mots de passe compris.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Configurer une redirection permanente (301) de HTTP vers HTTPS sur tout le site."
+
+# --- En-têtes HTTP ----------------------------------------------------------
+
+entetes_injoignable:
+  titre: "En-têtes de sécurité non vérifiables"
+  risque: >
+    Le site n'a pas répondu pendant l'analyse des en-têtes. Des protections
+    importantes peuvent manquer sans qu'on puisse le confirmer.
+  qui_corrige: "hebergeur"
+  effort: "15 min"
+  action: "Vérifier que le site répond en HTTPS, puis relancer l'analyse."
+
+entete_hsts_absent:
+  titre: "Protection HSTS absente"
+  risque: >
+    Sans HSTS, un visiteur peut être rabattu vers une version non chiffrée du
+    site par un attaquant présent sur le réseau (Wi-Fi public, par exemple).
+  qui_corrige: "developpeur"
+  effort: "15 min"
+  action: "Ajouter l'en-tête Strict-Transport-Security avec une durée d'au moins 6 mois."
+
+entete_csp_absent:
+  titre: "Politique de sécurité du contenu (CSP) absente"
+  risque: >
+    Sans CSP, une faille d'injection de code (XSS) est bien plus facile à
+    exploiter : vol de session, défiguration de page ou redirections pièges.
+  qui_corrige: "developpeur"
+  effort: "1 jour"
+  action: "Définir un en-tête Content-Security-Policy adapté aux ressources du site."
+
+entete_x_frame_options_absent:
+  titre: "Protection contre le détournement de clic absente"
+  risque: >
+    Le site peut être affiché dans un cadre invisible sur une page pirate pour
+    piéger vos visiteurs et leur faire cliquer à leur insu (clickjacking).
+  qui_corrige: "developpeur"
+  effort: "15 min"
+  action: "Ajouter l'en-tête X-Frame-Options: DENY ou SAMEORIGIN."
+
+entete_x_content_type_options_absent:
+  titre: "Interprétation automatique du type de fichier non bloquée"
+  risque: >
+    Sans cet en-tête, le navigateur peut deviner le type d'un fichier et
+    exécuter comme script un contenu qui ne devrait pas l'être.
+  qui_corrige: "developpeur"
+  effort: "10 min"
+  action: "Ajouter l'en-tête X-Content-Type-Options: nosniff."
+
+entete_referrer_policy_absent:
+  titre: "Politique de référent absente"
+  risque: >
+    Le site peut transmettre à des sites tiers l'adresse complète des pages
+    visitées, ce qui fuite des informations sur votre navigation.
+  qui_corrige: "developpeur"
+  effort: "10 min"
+  action: "Ajouter l'en-tête Referrer-Policy (par ex. strict-origin-when-cross-origin)."
+
+entete_permissions_policy_absent:
+  titre: "Permissions du navigateur non restreintes"
+  risque: >
+    Sans cet en-tête, rien ne limite l'accès à la caméra, au micro ou à la
+    géolocalisation si un script malveillant venait à s'exécuter.
+  qui_corrige: "developpeur"
+  effort: "30 min"
+  action: "Ajouter un en-tête Permissions-Policy désactivant les fonctions inutiles."
+
+cookie_non_securise:
+  titre: "Cookie mal protégé"
+  risque: >
+    Un cookie est servi sans les attributs Secure, HttpOnly ou SameSite. Il
+    peut être volé ou détourné, ce qui permet d'usurper la session d'un client.
+  qui_corrige: "developpeur"
+  effort: "30 min"
+  action: "Ajouter les attributs Secure, HttpOnly et SameSite aux cookies de session."
+
+entete_fuite_version:
+  titre: "Version logicielle divulguée"
+  risque: >
+    Le serveur annonce la version précise de ses logiciels. Un attaquant sait
+    alors directement quelles failles connues tenter contre votre site.
+  qui_corrige: "hebergeur"
+  effort: "15 min"
+  action: "Masquer les en-têtes Server et X-Powered-By ou en retirer le numéro de version."
+
+# --- DNS et messagerie ------------------------------------------------------
+
+dns_erreur:
+  titre: "Résolution DNS impossible"
+  risque: >
+    Le scanner n'a pas pu interroger le DNS du domaine. La configuration de la
+    messagerie et de l'authenticité n'a pas pu être vérifiée.
+  qui_corrige: "hebergeur"
+  effort: "15 min"
+  action: "Vérifier que la zone DNS du domaine répond correctement, puis relancer l'analyse."
+
+dns_domaine_introuvable:
+  titre: "Domaine introuvable"
+  risque: >
+    Le domaine demandé n'existe pas dans le DNS. Aucun test DNS n'a pu être
+    mené : vérifiez l'orthographe du domaine analysé.
+  qui_corrige: "gerant"
+  effort: "5 min"
+  action: "Confirmer l'orthographe exacte du domaine et qu'il est bien enregistré."
+
+spf_absent:
+  titre: "Aucun enregistrement SPF"
+  risque: >
+    Sans SPF, n'importe quel serveur peut envoyer des e-mails au nom de votre
+    domaine. Vos messages risquent aussi d'être classés en indésirables.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Ajouter un enregistrement TXT SPF (v=spf1) listant les serveurs autorisés à envoyer vos e-mails."
+
+dmarc_absent:
+  titre: "Aucune protection contre l'usurpation d'e-mail (DMARC)"
+  risque: >
+    N'importe qui peut envoyer des e-mails en se faisant passer pour votre
+    entreprise. Vos clients peuvent recevoir de fausses factures à votre nom.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Ajouter un enregistrement DMARC (_dmarc en TXT) dans votre zone DNS."
+
+dkim_absent:
+  titre: "Signature d'e-mail DKIM non vérifiable"
+  risque: >
+    Le scanner n'a pas pu vérifier votre signature DKIM : le nom du sélecteur
+    DKIM est libre et nous n'avons testé que les sélecteurs les plus courants.
+    DKIM est peut-être bien en place sous un sélecteur personnalisé ; ceci n'est
+    pas une absence avérée, à confirmer manuellement.
+  qui_corrige: "hebergeur"
+  effort: "15 min"
+  action: "Demander à votre hébergeur ou fournisseur de messagerie le nom exact du sélecteur DKIM et vérifier manuellement sa présence en DNS."
+
+mx_absent:
+  titre: "Aucun serveur de messagerie (MX) déclaré"
+  risque: >
+    Le domaine n'a pas d'enregistrement MX : il ne peut pas recevoir d'e-mails.
+    Si c'est involontaire, vous perdez des messages de clients.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Ajouter un enregistrement MX pointant vers votre serveur de messagerie, si le domaine doit recevoir des e-mails."
+
+dnssec_absent:
+  titre: "DNSSEC non activé"
+  risque: >
+    Sans DNSSEC, les réponses DNS de votre domaine ne sont pas signées. Un
+    attaquant pourrait détourner vos visiteurs vers un faux site.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Activer DNSSEC auprès de votre bureau d'enregistrement ou hébergeur DNS."
+
+# --- Fichiers exposés (mode actif) ------------------------------------------
+
+fichier_expose_git:
+  titre: "Dépôt Git exposé publiquement"
+  risque: >
+    Le dossier .git est accessible en ligne. Tout votre code source, et parfois
+    des mots de passe, peuvent être téléchargés par n'importe qui.
+  qui_corrige: "developpeur"
+  effort: "30 min"
+  action: "Bloquer l'accès au dossier .git depuis le serveur web et retirer le dépôt de la racine publique."
+
+fichier_expose_env:
+  titre: "Fichier .env de configuration exposé"
+  risque: >
+    Le fichier .env est téléchargeable. Il contient en général des mots de passe
+    de base de données et des clés secrètes : compromission totale possible.
+  qui_corrige: "developpeur"
+  effort: "30 min"
+  action: "Interdire l'accès au fichier .env depuis le web et renouveler immédiatement les secrets exposés."
+
+fichier_expose_backup:
+  titre: "Archive de sauvegarde accessible"
+  risque: >
+    Une archive de sauvegarde est téléchargeable publiquement. Elle peut
+    contenir tout le site et la base de données, données clients comprises.
+  qui_corrige: "developpeur"
+  effort: "20 min"
+  action: "Supprimer l'archive de la racine publique ou bloquer son accès depuis le serveur web."
+
+fichier_expose_phpinfo:
+  titre: "Page phpinfo() exposée"
+  risque: >
+    Une page phpinfo() publie la configuration détaillée du serveur. Un
+    attaquant y trouve chemins, versions et extensions pour préparer une attaque.
+  qui_corrige: "developpeur"
+  effort: "10 min"
+  action: "Supprimer le fichier phpinfo.php du serveur."
+
+fichier_expose_listing:
+  titre: "Affichage automatique du contenu d'un dossier activé"
+  risque: >
+    Le serveur affiche la liste des fichiers d'un dossier. Des documents privés
+    ou techniques peuvent être découverts et téléchargés par n'importe qui.
+  qui_corrige: "hebergeur"
+  effort: "15 min"
+  action: "Désactiver l'affichage automatique du contenu des répertoires (Options -Indexes sur Apache)."
