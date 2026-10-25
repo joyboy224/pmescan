@@ -67,5 +67,66 @@ def test_cli_scan_texte_affiche_etat_probleme(monkeypatch):
     assert "[PROBLEME] tls_expire (critique)" in resultat.stdout
 
 
+def _faux_scanner_tls_expire():
+    """Fabrique un faux scanner asynchrone renvoyant un unique problème critique."""
+
+    async def _faux_scanner(cible):
+        return [
+            Resultat(identifiant="tls_expire", gravite=Gravite.CRITIQUE, reussi=False)
+        ]
+
+    return _faux_scanner
+
+
+def test_cli_scan_pdf_appelle_la_chaine_avec_sortie_par_defaut(monkeypatch):
+    """`scan exemple.com --pdf` enchaîne contexte->html->pdf vers rapport-<domaine>.pdf.
+
+    On remplace `scanner` (pas de réseau) ET `ecrire_pdf` (pas de lib native) par
+    des faux ; WeasyPrint n'est jamais sollicité.
+    """
+    monkeypatch.setattr(cli_module, "scanner", _faux_scanner_tls_expire())
+
+    appels = {}
+
+    def _faux_ecrire_pdf(html, chemin):
+        # On mémorise ce que la CLI a construit pour vérifier la chaîne complète.
+        appels["html"] = html
+        appels["chemin"] = chemin
+
+    monkeypatch.setattr(cli_module, "ecrire_pdf", _faux_ecrire_pdf)
+
+    resultat = runner.invoke(app, ["scan", "exemple.com", "--pdf"])
+
+    assert resultat.exit_code == 0
+    # Chemin par défaut : rapport-<domaine>.pdf.
+    assert appels["chemin"] == "rapport-exemple.com.pdf"
+    # Le HTML passé à ecrire_pdf vient bien de la chaîne construire_contexte->rendre_html.
+    assert "exemple.com" in appels["html"]
+    assert "Certificat de sécurité expiré" in appels["html"]
+    # La CLI affiche le chemin du rapport écrit.
+    assert "rapport-exemple.com.pdf" in resultat.stdout
+
+
+def test_cli_scan_pdf_respecte_option_sortie(monkeypatch, tmp_path):
+    """L'option --sortie impose le chemin du PDF écrit et affiché."""
+    monkeypatch.setattr(cli_module, "scanner", _faux_scanner_tls_expire())
+
+    appels = {}
+
+    def _faux_ecrire_pdf(html, chemin):
+        appels["chemin"] = chemin
+
+    monkeypatch.setattr(cli_module, "ecrire_pdf", _faux_ecrire_pdf)
+
+    chemin_voulu = str(tmp_path / "mon-rapport.pdf")
+    resultat = runner.invoke(
+        app, ["scan", "exemple.com", "--pdf", "--sortie", chemin_voulu]
+    )
+
+    assert resultat.exit_code == 0
+    assert appels["chemin"] == chemin_voulu
+    assert chemin_voulu in resultat.stdout
+
+
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-v"]))

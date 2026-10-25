@@ -26,6 +26,8 @@ dependencies = [
     "sslyze>=6.0",
     "dnspython>=2.6",
     "pyyaml>=6.0",
+    "jinja2>=3.1",
+    "weasyprint>=62",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +48,7 @@ packages = ["pmescan"]
 # Inclut le fichier de textes YAML dans le paquet distribué (sinon absent de la roue).
 [tool.hatch.build.targets.wheel.force-include]
 "pmescan/i18n/fr.yaml" = "pmescan/i18n/fr.yaml"
+"pmescan/rapport/modele.html" = "pmescan/rapport/modele.html"
 
 [tool.ruff]
 line-length = 100
@@ -62,3 +65,8 @@ strict = true
 [[tool.mypy.overrides]]
 module = "sslyze"
 implicit_reexport = true
+
+# weasyprint ne fournit pas de stubs de typage : on ignore l'absence de types.
+[[tool.mypy.overrides]]
+module = "weasyprint"
+ignore_missing_imports = true

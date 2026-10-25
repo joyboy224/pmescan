@@ -10,6 +10,7 @@ import typer
 
 from pmescan.modele import Cible, Resultat
 from pmescan.notation import calculer_note
+from pmescan.rapport.generateur import construire_contexte, ecrire_pdf, rendre_html
 from pmescan.scanner import scanner
 
 app = typer.Typer(
@@ -65,6 +66,14 @@ def scan(
     format_json: bool = typer.Option(
         False, "--json", help="Affiche les résultats agrégés au format JSON."
     ),
+    pdf: bool = typer.Option(
+        False, "--pdf", help="Génère un rapport PDF en français clair."
+    ),
+    sortie: str | None = typer.Option(
+        None,
+        "--sortie",
+        help="Chemin du fichier PDF à écrire (défaut : rapport-<domaine>.pdf).",
+    ),
 ) -> None:
     """Analyse un domaine et affiche les résultats.
 
@@ -73,6 +82,17 @@ def scan(
     cible = Cible(domaine=domaine, mode=mode)
     resultats = asyncio.run(scanner(cible))
     score, note = calculer_note(resultats)
+    if pdf:
+        chemin = sortie if sortie is not None else f"rapport-{domaine}.pdf"
+        contexte = construire_contexte(cible, resultats, note, score)
+        html = rendre_html(contexte)
+        try:
+            ecrire_pdf(html, chemin)
+        except RuntimeError as erreur:
+            typer.echo(str(erreur), err=True)
+            raise typer.Exit(code=1) from erreur
+        typer.echo(f"Rapport PDF écrit : {chemin}")
+        return
     if format_json:
         charge: dict[str, object] = {
             "note": note,

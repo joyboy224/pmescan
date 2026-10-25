@@ -1,0 +1,257 @@
+{#
+  Gabarit du rapport PDF pmescan.
+  Les textes vulgarisés (titre, risque, action...) viennent de i18n/fr.yaml via le
+  contexte ; seuls les libellés de structure (titres de section, en-têtes de tableau,
+  rappel légal) et la mise en forme vivent ici.
+#}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rapport de sécurité — {{ domaine }}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 1.8cm 1.6cm;
+    @bottom-center {
+      content: "pmescan — rapport de sécurité — " counter(page) " / " counter(pages);
+      font-size: 8pt;
+      color: #888;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "DejaVu Sans", "Segoe UI", Arial, sans-serif;
+    color: #222;
+    font-size: 10.5pt;
+    line-height: 1.5;
+    margin: 0;
+  }
+  h1 { font-size: 22pt; margin: 0 0 0.2cm; }
+  h2 {
+    font-size: 14pt;
+    margin: 0.8cm 0 0.3cm;
+    padding-bottom: 0.1cm;
+    border-bottom: 2px solid #2c3e50;
+    color: #2c3e50;
+  }
+  h3 { font-size: 11.5pt; margin: 0 0 0.15cm; }
+  p { margin: 0 0 0.3cm; }
+  .sous-titre { color: #666; font-size: 10pt; margin-bottom: 0.6cm; }
+
+  /* --- Page de garde : grosse note et score --- */
+  .garde { text-align: center; margin: 1.2cm 0; }
+  .note-bloc {
+    display: inline-block;
+    padding: 0.5cm 0.9cm;
+    border-radius: 0.3cm;
+    background: #2c3e50;
+    color: #fff;
+  }
+  .note-lettre { font-size: 60pt; font-weight: bold; line-height: 1; }
+  .note-score { font-size: 14pt; }
+
+  .resume {
+    background: #f5f7fa;
+    border-left: 4px solid #2c3e50;
+    padding: 0.4cm 0.5cm;
+    margin: 0.6cm 0;
+  }
+
+  /* --- Puces de gravité --- */
+  .etiquette {
+    display: inline-block;
+    padding: 0.05cm 0.25cm;
+    border-radius: 0.15cm;
+    color: #fff;
+    font-size: 8.5pt;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  .g-critique { background: #c0392b; }
+  .g-elevee   { background: #e67e22; }
+  .g-moyenne  { background: #d4ac0d; }
+  .g-faible   { background: #7f8c8d; }
+  .g-info     { background: #95a5a6; }
+
+  /* --- Fiches de problème --- */
+  .fiche {
+    border: 1px solid #ddd;
+    border-left: 5px solid #ccc;
+    border-radius: 0.15cm;
+    padding: 0.35cm 0.45cm;
+    margin: 0 0 0.4cm;
+    page-break-inside: avoid;
+  }
+  .fiche.g-critique { border-left-color: #c0392b; }
+  .fiche.g-elevee   { border-left-color: #e67e22; }
+  .fiche.g-moyenne  { border-left-color: #d4ac0d; }
+  .fiche.g-faible   { border-left-color: #7f8c8d; }
+  .fiche .meta { font-size: 9.5pt; color: #555; margin: 0.2cm 0; }
+  .fiche .meta span { margin-right: 0.6cm; }
+  .fiche .action {
+    background: #eef6ee;
+    border-left: 3px solid #27ae60;
+    padding: 0.2cm 0.35cm;
+    margin-top: 0.2cm;
+  }
+
+  .urgentes ol { margin: 0.2cm 0 0; padding-left: 0.7cm; }
+  .urgentes li { margin-bottom: 0.15cm; }
+
+  /* --- Annexe technique --- */
+  table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 0.15cm 0.25cm;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #2c3e50; color: #fff; }
+  td.preuve { font-family: "DejaVu Sans Mono", monospace; font-size: 8pt; word-break: break-word; }
+
+  /* --- Rappel légal --- */
+  .legal {
+    margin-top: 0.8cm;
+    border: 1px solid #c9c9c9;
+    background: #fbfbf7;
+    padding: 0.4cm 0.5cm;
+    font-size: 9pt;
+    color: #444;
+    page-break-inside: avoid;
+  }
+  .legal h2 { border: none; color: #444; font-size: 12pt; margin-top: 0; }
+</style>
+</head>
+<body>
+
+{# Dictionnaires de libellés de structure (mise en page, pas de l'i18n métier). #}
+{% set libelles_gravite = {
+  "critique": "Critique", "elevee": "Élevée", "moyenne": "Moyenne",
+  "faible": "Faible", "info": "Info"
+} %}
+{% set libelles_qui = {
+  "hebergeur": "Votre hébergeur", "developpeur": "Votre développeur",
+  "gerant": "Vous (gérant)"
+} %}
+
+<!-- ====================== PAGE DE GARDE ====================== -->
+<h1>Rapport de sécurité</h1>
+<p class="sous-titre">
+  Domaine analysé : <strong>{{ domaine }}</strong> — Analyse {{ mode }} du {{ date_scan }}
+</p>
+
+<div class="garde">
+  <div class="note-bloc">
+    <div class="note-lettre">{{ note }}</div>
+    <div class="note-score">{{ score }} / 100</div>
+  </div>
+</div>
+
+<div class="resume">
+  <p>
+    Le domaine {{ domaine }} obtient la note {{ note }} ({{ score }} sur 100) à l'issue
+    d'une analyse {{ mode }} réalisée le {{ date_scan }}.
+  </p>
+  {% if nombre_problemes > 0 %}
+  <p>
+    L'analyse a relevé {{ nombre_problemes }}
+    {{ "problème" if nombre_problemes == 1 else "problèmes" }} à corriger
+    ({{ par_gravite["critique"] }} critique(s), {{ par_gravite["elevee"] }} élevé(s),
+    {{ par_gravite["moyenne"] }} moyen(s), {{ par_gravite["faible"] }} faible(s)).
+  </p>
+  <p>
+    Les fiches ci-dessous détaillent chaque point, classées de la plus urgente à la
+    moins urgente ; commencez par les actions mises en avant juste en dessous.
+  </p>
+  {% else %}
+  <p>
+    Aucun problème à corriger n'a été détecté lors de cette analyse.
+  </p>
+  <p>
+    Continuez à surveiller régulièrement votre site, car une configuration sûre
+    aujourd'hui peut évoluer avec le temps.
+  </p>
+  {% endif %}
+</div>
+
+{% if actions_urgentes %}
+<div class="urgentes">
+  <h2>Actions urgentes</h2>
+  <ol>
+    {% for fiche in actions_urgentes %}
+    <li>
+      <span class="etiquette g-{{ fiche.gravite }}">{{ libelles_gravite[fiche.gravite] }}</span>
+      <strong>{{ fiche.titre }}</strong>
+      {% if fiche.action %}— {{ fiche.action }}{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</div>
+{% endif %}
+
+<!-- ====================== FICHES DÉTAILLÉES ====================== -->
+{% if fiches %}
+<h2>Détail des problèmes</h2>
+{% for fiche in fiches %}
+<div class="fiche g-{{ fiche.gravite }}">
+  <h3>
+    <span class="etiquette g-{{ fiche.gravite }}">{{ libelles_gravite[fiche.gravite] }}</span>
+    {{ fiche.titre }}
+  </h3>
+  {% if fiche.risque %}<p>{{ fiche.risque }}</p>{% endif %}
+  <p class="meta">
+    {% if fiche.qui_corrige %}<span><strong>Qui corrige :</strong>
+      {{ libelles_qui.get(fiche.qui_corrige, fiche.qui_corrige) }}</span>{% endif %}
+    {% if fiche.effort %}<span><strong>Effort estimé :</strong> {{ fiche.effort }}</span>{% endif %}
+  </p>
+  {% if fiche.action %}<div class="action"><strong>À faire :</strong> {{ fiche.action }}</div>{% endif %}
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- ====================== ANNEXE TECHNIQUE ====================== -->
+<h2>Annexe technique</h2>
+<p class="sous-titre">
+  Détail brut de tous les contrôles effectués, à destination des personnes techniques.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>Identifiant</th>
+      <th>Gravité</th>
+      <th>État</th>
+      <th>Preuve</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for ligne in annexe %}
+    <tr>
+      <td>{{ ligne.identifiant }}</td>
+      <td>{{ libelles_gravite[ligne.gravite] }}</td>
+      <td>{{ "OK" if ligne.reussi else "Problème" }}</td>
+      <td class="preuve">{{ ligne.preuve }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- ====================== RAPPEL LÉGAL ====================== -->
+<div class="legal">
+  <h2>Rappel légal</h2>
+  <p>
+    Au Sénégal, le traitement des données à caractère personnel est encadré par la
+    loi n° 2008-12 du 25 janvier 2008 sur la protection des données à caractère
+    personnel. Elle impose notamment de garantir la sécurité et la confidentialité
+    des données collectées auprès des clients et des usagers.
+  </p>
+  <p>
+    La Commission de protection des données personnelles (CDP) est l'autorité
+    chargée de veiller à l'application de cette loi. Sécuriser votre site participe
+    au respect de ces obligations. Ce rapport est fourni à titre informatif et ne
+    constitue pas un avis juridique.
+  </p>
+</div>
+
+</body>
+</html>
