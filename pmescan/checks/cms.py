@@ -4,9 +4,11 @@ Comportement selon le mode :
 
 - **passif** (défaut) : on ne lit QUE la page d'accueil (meta generator, en-tête
   X-Generator, marqueurs techniques, cookies). Aucune autre URL de la cible n'est demandée.
-- **actif** / **agressif** : on sonde en plus des fichiers de version connus (readme.html,
-  CHANGELOG.txt, manifeste Joomla, /admin/) après une sonde « soft 404 », et on mène les
-  vérifications propres à WordPress (xmlrpc.php, énumération des auteurs).
+- **actif** / **agressif**, avec autorisation explicite (``cible.autorisation``) : on sonde
+  en plus des fichiers de version connus (readme.html, CHANGELOG.txt, manifeste Joomla,
+  /admin/) après une sonde « soft 404 », et on mène les vérifications propres à
+  WordPress (xmlrpc.php, énumération des auteurs). Sans autorisation, le comportement
+  reste celui du mode passif.
 
 Le signal principal est la **branche majeure non maintenue** : on compare la branche
 majeure détectée aux branches maintenues (table embarquée, meilleur effort).
@@ -135,7 +137,10 @@ class VerificationCms(Verification):
     async def executer(self, cible: Cible) -> list[Resultat]:
         resultats: list[Resultat] = []
         base = f"https://{cible.domaine}"
-        sonde_autorisee = cible.mode in _MODES_SONDE
+        # Défense en profondeur : les sondes de chemins et les vérifications WordPress
+        # exigent un mode intrusif ET l'autorisation explicite (cible.autorisation). L'API
+        # Python ne lance jamais de requête intrusive sans autorisation explicite.
+        sonde_autorisee = cible.mode in _MODES_SONDE and cible.autorisation
         # verify=False délibéré : la validité du certificat est traitée par le module
         # sslyze. Ce client httpx ne lit que des pages publiques de la CIBLE pour
         # identifier le CMS et ne doit pas échouer sur un certificat invalide. Il n'est

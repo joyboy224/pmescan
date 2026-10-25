@@ -1,92 +1,96 @@
-# Mode agressif — pmescan
+# Modes actif et agressif — pmescan
 
-> ⚠️ **À lire entièrement avant toute utilisation.** Ce mode est réservé aux tests
-> que vous êtes légalement autorisé à mener. Une mauvaise utilisation est illégale
-> et peut endommager la cible.
+> ⚠️ **À lire entièrement avant toute utilisation.** Les modes actif et agressif
+> sollicitent activement la cible. Ils sont réservés aux analyses que vous êtes
+> légalement autorisé à mener.
 
-## 1. Qu'est-ce que le mode agressif ?
+## 1. Les trois modes
 
-`pmescan` propose trois niveaux d'analyse :
-
-| Niveau | Flag | Ce qu'il fait | Autorisation requise |
+| Mode | Commande | Ce qu'il fait | Autorisation |
 |---|---|---|---|
-| **Passif** | *(défaut)* | Lit seulement les informations publiées par le site (TLS, en-têtes HTTP, DNS, SPF/DMARC). N'envoie aucune requête intrusive. | Non |
-| **Actif** | `--active` | Teste des ports critiques et quelques chemins sensibles (`/.git/`, `/.env`). | Oui |
-| **Agressif** | `--aggressive` | Sollicite activement la cible : brute-force de chemins, énumération CMS complète, scan de tous les ports, fuzzing de paramètres, vérification active de vulnérabilités. | **Oui, écrite** |
+| **Passif** | `--mode passif` *(défaut)* | Lit seulement ce que le site publie : certificat TLS, en-têtes HTTP, enregistrements DNS (SPF, DMARC, DKIM, MX, DNSSEC), page d'accueil pour reconnaître le CMS. | Non |
+| **Actif** | `--mode actif --jai-l-autorisation` | Ajoute des requêtes vers des chemins sensibles, des fichiers de version du CMS et un test de ports TCP. | **Oui** |
+| **Agressif** | `--mode agressif --jai-l-autorisation` | Réservé à de futures vérifications plus intrusives. **Dans la version 0.1, il fait exactement la même chose que le mode actif.** | **Oui** |
 
-Le mode agressif **n'est jamais activé par défaut**. Il nécessite un flag explicite et
-une confirmation au lancement.
+Le mode passif est le mode par défaut. Les deux autres ne se lancent jamais sans le flag
+`--jai-l-autorisation`.
 
-## 2. Ce que le mode agressif envoie à la cible
+## 2. Ce que le mode actif envoie à la cible
 
-- Brute-force de répertoires et fichiers à partir d'un dictionnaire (génère beaucoup de 404).
-- Énumération forcée des plugins et thèmes CMS, pas seulement ceux visibles.
-- Scan complet des 65535 ports avec détection de version de service.
-- Fuzzing des paramètres d'URL et des formulaires (détection XSS, erreurs SQL, traversée de chemin).
-- Requêtes conçues pour confirmer qu'une CVE est réellement exploitable.
+En plus des vérifications passives, le mode actif fait les requêtes suivantes :
 
-### Conséquences techniques
+- **Fichiers sensibles** : `/.git/HEAD`, `/.env`, `/backup.zip`, `/phpinfo.php`, et la
+  racine du site pour repérer un listing de répertoire. Soit 5 requêtes HTTP.
+- **Fichiers de version du CMS** : au plus 7 requêtes HTTP, et seulement si la page
+  d'accueil ne suffit pas à reconnaître le CMS. pmescan demande d'abord une adresse
+  aléatoire inexistante. Si elle répond « 200 », le site répond 200 à tout, et pmescan
+  s'arrête là. Sinon, il demande `readme.html`, `CHANGELOG.txt`, `core/CHANGELOG.txt`,
+  le manifeste Joomla et `/admin/`.
+- **WordPress uniquement** : `xmlrpc.php` et `/?author=1`, pour repérer la page XML-RPC et
+  l'énumération des comptes. Soit 2 requêtes HTTP.
+- **Ports TCP** : une tentative de connexion sur 30 ports connus (bases de données,
+  accès distant, administration). Aucune donnée n'est envoyée après l'ouverture : la
+  connexion est fermée tout de suite.
 
-- **Charge serveur élevée.** Peut ralentir ou faire tomber un site hébergé en mutualisé.
-- **Détection.** Des milliers de requêtes déclenchent les WAF/IDS et peuvent faire bannir votre IP.
-- **Logs.** La cible verra son journal rempli d'alertes de sécurité.
-- **Risque de données.** Le fuzzing de formulaires actifs peut créer des comptes, envoyer
-  des messages ou corrompre des données.
+Garde-fous intégrés :
 
-N'utilisez jamais ce mode sur un environnement de production sensible sans fenêtre de
-maintenance convenue avec le propriétaire.
+- au plus **20 connexions simultanées** ;
+- **2 secondes** maximum par tentative ;
+- **une seule tentative** par port ;
+- aucune tentative de mot de passe, aucun envoi de formulaire, aucune exploitation de
+  faille.
+
+Le scan reste léger, mais il laisse des traces : la cible peut voir ces requêtes dans
+ses journaux, et un pare-feu peut bloquer votre adresse IP.
 
 ## 3. Cadre légal — obligatoire
 
-Le mode agressif n'est plus de la simple lecture : il **sollicite activement** un système
-informatique. Sans autorisation du propriétaire, cela constitue une infraction.
+Les modes actif et agressif ne se contentent plus de lire : ils **sollicitent
+activement** un système informatique. Sans l'accord du propriétaire, cela peut
+constituer une infraction :
 
 - 🇸🇳 **Sénégal** : loi n° 2008-11 sur la cybercriminalité (accès et maintien frauduleux
-  dans un système de traitement automatisé de données).
-- 🇫🇷 **France** : articles 323-1 et suivants du Code pénal.
+  dans un système de traitement automatisé de données) ;
+- 🇫🇷 **France** : articles 323-1 et suivants du Code pénal ;
 - 🇺🇸 **États-Unis** : Computer Fraud and Abuse Act (CFAA).
 
-**Vous n'êtes autorisé à utiliser `--aggressive` que si l'une de ces conditions est remplie :**
+**N'utilisez `--jai-l-autorisation` que si l'une de ces conditions est remplie :**
 
-1. Vous êtes propriétaire de la cible, **ou**
-2. Vous détenez une **autorisation écrite** signée du propriétaire (mandat de test
-   d'intrusion, contrat, ou e-mail explicite), couvrant la période et le périmètre du scan.
+1. vous êtes propriétaire de la cible ;
+2. vous détenez une **autorisation écrite** du propriétaire (mandat d'audit, contrat ou
+   e-mail explicite) qui couvre la période et le périmètre de l'analyse.
 
 Une autorisation verbale ne suffit pas. Conservez la preuve écrite.
 
 ## 4. Utilisation
 
 ```bash
-pmescan example.sn --aggressive --i-have-written-authorization
+pmescan scan exemple.sn --mode actif --jai-l-autorisation
 ```
 
-Sans le flag `--i-have-written-authorization`, la commande refuse de s'exécuter.
-
-Au lancement, l'outil affiche un bandeau de consentement que vous devez confirmer :
+Sans le flag, la commande refuse de s'exécuter **avant toute requête réseau** et se
+termine avec le code de sortie `3` :
 
 ```
-================= MODE AGRESSIF =================
-Cible        : example.sn
-Date         : 2026-10-24 14:30
-Ce scan va solliciter activement la cible.
-Vous déclarez disposer d'une autorisation écrite
-du propriétaire de ce système.
-
-Taper "OUI J'AI L'AUTORISATION" pour continuer :
+$ pmescan scan exemple.sn --mode actif
+Refus : le mode actif sollicite activement la cible (exemple.sn). N'utilisez ce mode que sur une cible dont vous êtes propriétaire ou pour laquelle vous disposez d'une autorisation écrite de son propriétaire. Si c'est le cas, relancez la commande avec --jai-l-autorisation. Voir README-mode-agressif.md. Aucune requête n'a été envoyée.
 ```
 
-Cette confirmation, avec la cible et l'horodatage, est enregistrée localement dans
-`~/.pmescan/consent.log` à des fins de traçabilité.
+Le flag ne sert qu'aux modes actif et agressif : il est ignoré en mode passif.
 
-### Options de sécurité recommandées
+### Journal de consentement
 
-```bash
-# Limiter le débit pour ne pas saturer la cible (requêtes par seconde)
-pmescan example.sn --aggressive --i-have-written-authorization --rate-limit 10
+Chaque scan actif ou agressif autorisé ajoute une ligne au fichier
+`~/.pmescan/consent.log`, **avant** le début du scan. Chaque ligne contient trois champs
+séparés par des tabulations : l'horodatage UTC, le domaine et le mode.
 
-# Restreindre le périmètre à un sous-domaine précis
-pmescan app.example.sn --aggressive --i-have-written-authorization --scope app.example.sn
 ```
+2026-10-25T15:18:33+00:00	exemple.sn	actif
+```
+
+Ce journal reste sur votre machine : il n'est envoyé nulle part. Pour le déplacer, réglez
+la variable d'environnement `PMESCAN_DOSSIER`. Si le fichier ne peut pas être écrit,
+pmescan affiche un avertissement et poursuit le scan.
 
 ## 5. Responsabilité
 
@@ -94,4 +98,4 @@ Ce logiciel est fourni « tel quel », sans garantie. Les auteurs et contributeu
 peuvent être tenus responsables d'un usage illégal ou dommageable. **La responsabilité
 de disposer des autorisations nécessaires incombe entièrement à l'utilisateur.**
 
-En utilisant le mode agressif, vous acceptez ces conditions.
+En passant le flag `--jai-l-autorisation`, vous déclarez remplir ces conditions.

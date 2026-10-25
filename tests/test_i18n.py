@@ -50,8 +50,9 @@ from tests.conftest import (
 _CLES_ATTENDUES = {"titre", "risque", "qui_corrige", "effort", "action"}
 _RESPONSABLES_VALIDES = {"hebergeur", "developpeur", "gerant"}
 
-# Cible commune aux scénarios : mode « actif » pour activer aussi les checks intrusifs.
-_CIBLE = Cible(domaine="exemple.com", mode="actif")
+# Cible commune aux scénarios : mode « actif » AVEC autorisation explicite, pour activer
+# aussi les checks intrusifs (défense en profondeur : sans autorisation, ils sont ignorés).
+_CIBLE = Cible(domaine="exemple.com", mode="actif", autorisation=True)
 
 
 # --- Outils de mock partagés -------------------------------------------------
@@ -198,7 +199,7 @@ def _resultats_cms() -> list[list]:
     verif = VerificationCms()
     # Mode ACTIF (sonde des chemins et vérifications WordPress) et OSV activé : sans
     # verifier_cve=True, cms_vulnerable et cms_cve_indeterminee ne sont jamais émis.
-    cible = Cible(domaine="exemple.com", mode="actif", verifier_cve=True)
+    cible = Cible(domaine="exemple.com", mode="actif", verifier_cve=True, autorisation=True)
     base = "https://exemple.com"
     url_osv = "https://api.osv.dev/v1/query"
 

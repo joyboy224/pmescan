@@ -69,6 +69,10 @@ class VerificationPorts(Verification):
     niveau_minimum = "actif"
 
     async def executer(self, cible: Cible) -> list[Resultat]:
+        # Défense en profondeur : même appelé directement en Python, ce check intrusif
+        # n'ouvre aucune connexion sans autorisation explicite.
+        if not cible.autorisation:
+            return []
         hote = cible.ip or cible.domaine
 
         # Résolution UNIQUE avant la boucle : toutes les connexions visent la même adresse,

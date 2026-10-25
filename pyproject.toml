@@ -25,6 +25,7 @@ dependencies = [
     "httpx>=0.27",
     "sslyze>=6.0",
     "dnspython>=2.6",
+    "idna>=3.7",
     "pyyaml>=6.0",
     "jinja2>=3.1",
     "weasyprint>=62",
@@ -37,6 +38,8 @@ dev = [
     "mypy>=1.10",
     "respx>=0.21",
     "types-PyYAML>=6.0",
+    "build>=1.2",
+    "twine>=5.0",
 ]
 
 [project.scripts]
@@ -44,6 +47,10 @@ pmescan = "pmescan.cli:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["pmescan"]
+
+# Les définitions d'agents de développement (.claude/) restent hors de l'archive source.
+[tool.hatch.build.targets.sdist]
+exclude = [".claude"]
 
 # Inclut le fichier de textes YAML dans le paquet distribué (sinon absent de la roue).
 [tool.hatch.build.targets.wheel.force-include]

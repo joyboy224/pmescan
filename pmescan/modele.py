@@ -36,3 +36,10 @@ class Cible:
     # version du CMS détecté à un tiers. Désactivée par défaut pour respecter le principe
     # « aucune donnée envoyée à un tiers » (voir 03-CONCEPTION.md).
     verifier_cve: bool = False
+    # DÉFENSE EN PROFONDEUR : vrai seulement si l'utilisateur a explicitement confirmé
+    # disposer d'une autorisation sur la cible (--jai-l-autorisation en mode intrusif).
+    # Sans elle, même si ``mode`` vaut « actif » ou « agressif » : scanner() ignore les
+    # vérifications intrusives, ces checks (ports, exposes) renvoient une liste vide
+    # s'ils sont appelés directement, et le check cms ne sonde aucun chemin. L'API
+    # Python ne lance jamais de requête intrusive sans autorisation explicite.
+    autorisation: bool = False

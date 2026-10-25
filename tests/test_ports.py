@@ -51,7 +51,7 @@ def _executer(monkeypatch, ports_ouverts, *, en_delai_depasse=()):
         "open_connection",
         _ouverture_avec_delai_depasse(ports_ouverts, en_delai_depasse),
     )
-    cible = Cible(domaine=DOMAINE, mode="actif")
+    cible = Cible(domaine=DOMAINE, mode="actif", autorisation=True)
     return asyncio.run(VerificationPorts().executer(cible))
 
 
@@ -84,7 +84,8 @@ def test_connexions_visent_l_adresse_resolue(monkeypatch, sans_dns):
         raise OSError("connexion refusée")
 
     monkeypatch.setattr(asyncio, "open_connection", _ouvrir)
-    asyncio.run(VerificationPorts().executer(Cible(domaine=DOMAINE, mode="actif")))
+    cible = Cible(domaine=DOMAINE, mode="actif", autorisation=True)
+    asyncio.run(VerificationPorts().executer(cible))
 
     assert hotes_vises == {ADRESSE_FACTICE}
 
@@ -152,7 +153,8 @@ def test_ecrivain_ferme_pour_un_port_ouvert(monkeypatch, sans_dns):
         asyncio, "open_connection", faux_open_connection({22, 3306}, ecrivains)
     )
 
-    asyncio.run(VerificationPorts().executer(Cible(domaine=DOMAINE, mode="actif")))
+    cible = Cible(domaine=DOMAINE, mode="actif", autorisation=True)
+    asyncio.run(VerificationPorts().executer(cible))
 
     assert len(ecrivains) == 2
     assert all(ecrivain.fermetures == 1 for ecrivain in ecrivains)
@@ -176,7 +178,8 @@ def test_concurrence_ne_depasse_jamais_la_limite(monkeypatch, sans_dns):
             compteur["en_cours"] -= 1
 
     monkeypatch.setattr(asyncio, "open_connection", _ouvrir)
-    asyncio.run(VerificationPorts().executer(Cible(domaine=DOMAINE, mode="actif")))
+    cible = Cible(domaine=DOMAINE, mode="actif", autorisation=True)
+    asyncio.run(VerificationPorts().executer(cible))
 
     assert compteur["max"] <= _CONCURRENCE_MAX
     # Et les connexions sont bien parallélisées jusqu'à la limite.
@@ -208,7 +211,9 @@ def test_hote_introuvable_donne_un_seul_resultat(monkeypatch):
     monkeypatch.setattr(asyncio, "open_connection", _ouvrir)
 
     resultats = asyncio.run(
-        VerificationPorts().executer(Cible(domaine="introuvable.invalid", mode="actif"))
+        VerificationPorts().executer(
+            Cible(domaine="introuvable.invalid", mode="actif", autorisation=True)
+        )
     )
 
     assert len(resultats) == 1
@@ -317,6 +322,31 @@ def test_resoudre_demande_sock_stream(monkeypatch):
     assert kwargs.get("type") == socket.SOCK_STREAM
 
 
+# --- Défense en profondeur : appel direct sans autorisation ------------------
+
+
+@pytest.mark.parametrize("mode", ["actif", "agressif"])
+def test_appel_direct_sans_autorisation_ne_fait_rien(monkeypatch, mode):
+    """executer() appelé DIRECTEMENT sans autorisation : [] sans résolution ni connexion."""
+    compteur = {"resolutions": 0, "connexions": 0}
+
+    async def _faux_resoudre(self, hote):
+        compteur["resolutions"] += 1
+        return ADRESSE_FACTICE
+
+    async def _fausse_connexion(hote, port):
+        compteur["connexions"] += 1
+        raise OSError("connexion refusée")
+
+    monkeypatch.setattr(VerificationPorts, "_resoudre", _faux_resoudre)
+    monkeypatch.setattr(asyncio, "open_connection", _fausse_connexion)
+
+    resultats = asyncio.run(VerificationPorts().executer(Cible(domaine=DOMAINE, mode=mode)))
+
+    assert resultats == []
+    assert compteur == {"resolutions": 0, "connexions": 0}
+
+
 # --- Activation par mode via scanner() ---------------------------------------
 
 
@@ -336,7 +366,7 @@ def test_scanner_actif_execute_les_ports(monkeypatch, sans_dns):
     """En mode actif, le check « ports » s'exécute et détecte le port ouvert simulé."""
     monkeypatch.setattr(scanner_module, "VERIFICATIONS", [VerificationPorts()])
     monkeypatch.setattr(asyncio, "open_connection", faux_open_connection({3306}))
-    cible = Cible(domaine=DOMAINE, mode="actif")
+    cible = Cible(domaine=DOMAINE, mode="actif", autorisation=True)
 
     resultats = asyncio.run(scanner(cible))
 

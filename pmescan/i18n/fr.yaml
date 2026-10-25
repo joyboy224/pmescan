@@ -580,3 +580,28 @@ ports_hote_introuvable:
   qui_corrige: "hebergeur"
   effort: "15 min"
   action: "Vérifier que le domaine pointe bien vers votre serveur (enregistrement DNS A ou AAAA), puis relancer l'analyse."
+
+# --- Messages de la ligne de commande ----------------------------------------
+# Section à part (pas un identifiant de problème) : messages affichés par la CLI.
+
+cli:
+  refus_autorisation: >-
+    Refus : le mode {mode} sollicite activement la cible ({domaine}).
+    N'utilisez ce mode que sur une cible dont vous êtes propriétaire ou pour
+    laquelle vous disposez d'une autorisation écrite de son propriétaire.
+    Si c'est le cas, relancez la commande avec --jai-l-autorisation.
+    Voir README-mode-agressif.md. Aucune requête n'a été envoyée.
+  avertissement_journal: >-
+    Avertissement : impossible d'écrire le journal de consentement ({erreur}).
+    Le scan continue.
+  domaine_invalide: >-
+    Erreur : {domaine} n'est pas un nom de domaine valide. Indiquez seulement le
+    nom du site, par exemple exemple.com, sans « https:// », sans chemin, sans
+    port et sans adresse e-mail. Aucune requête n'a été envoyée.
+  erreur_pdf: >-
+    Erreur : impossible d'écrire le rapport PDF ({chemin}). {erreur}
+  interruption: >-
+    Analyse interrompue à votre demande. Aucun rapport n'a été produit.
+  erreur_inattendue: >-
+    Erreur inattendue pendant l'analyse ({erreur}). Relancez la commande ; si le
+    problème persiste, signalez-le avec ce message.

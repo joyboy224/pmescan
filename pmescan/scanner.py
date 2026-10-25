@@ -30,14 +30,33 @@ def _mode_compatible(niveau_minimum: str, mode: str) -> bool:
     return _ORDRE_MODES.get(niveau_minimum, 0) <= _ORDRE_MODES.get(mode, 0)
 
 
-def selectionner_verifications(mode: str) -> list[Verification]:
-    """Renvoie les vérifications activées pour le mode demandé."""
-    return [v for v in VERIFICATIONS if _mode_compatible(v.niveau_minimum, mode)]
+def _est_intrusive(verification: Verification) -> bool:
+    """Vrai si la vérification exige au moins le mode actif."""
+    return _ORDRE_MODES.get(verification.niveau_minimum, 0) > _ORDRE_MODES["passif"]
+
+
+def selectionner_verifications(
+    mode: str, autorisation: bool = False
+) -> list[Verification]:
+    """Renvoie les vérifications activées pour le mode demandé.
+
+    Défense en profondeur : une vérification intrusive (niveau actif ou agressif) n'est
+    retenue que si ``autorisation`` est vrai, même si ``mode`` la permet. Sans
+    autorisation, elle est ignorée silencieusement, comme en mode passif. Ainsi l'API
+    Python ne lance jamais de requête intrusive sans autorisation explicite, même si un
+    appelant construit une Cible en mode « actif » sans passer par la garde de la CLI.
+    """
+    return [
+        v
+        for v in VERIFICATIONS
+        if _mode_compatible(v.niveau_minimum, mode)
+        and (autorisation or not _est_intrusive(v))
+    ]
 
 
 async def scanner(cible: Cible) -> list[Resultat]:
     """Exécute en parallèle les vérifications compatibles et agrège les résultats."""
-    verifications = selectionner_verifications(cible.mode)
+    verifications = selectionner_verifications(cible.mode, cible.autorisation)
     taches = [verification.executer(cible) for verification in verifications]
     # return_exceptions=True : l'orchestrateur reste robuste même si un check lève.
     listes = await asyncio.gather(*taches, return_exceptions=True)

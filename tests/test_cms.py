@@ -39,9 +39,16 @@ def _identifiants(resultats) -> set[str]:
     return {r.identifiant for r in resultats}
 
 
-def _executer(mode: str = "passif", verifier_cve: bool = False):
-    """Exécute la vérification CMS sur exemple.com."""
-    cible = Cible(domaine=DOMAINE, mode=mode, verifier_cve=verifier_cve)
+def _executer(mode: str = "passif", verifier_cve: bool = False, autorisation: bool = True):
+    """Exécute la vérification CMS sur exemple.com.
+
+    ``autorisation`` vaut True par défaut : les tests du mode actif visent les sondes de
+    chemins, qui exigent l'autorisation explicite (défense en profondeur). En passif, elle
+    est sans effet ; des tests dédiés vérifient le cas « actif sans autorisation ».
+    """
+    cible = Cible(
+        domaine=DOMAINE, mode=mode, verifier_cve=verifier_cve, autorisation=autorisation
+    )
     return asyncio.run(VerificationCms().executer(cible))
 
 
@@ -188,6 +195,38 @@ def test_mode_passif_sans_cms_ne_sonde_aucun_chemin(respx_mock):
 
     assert len(respx_mock.calls) == 1
     assert _identifiants(resultats) == {"cms_non_detecte"}
+
+
+# --- Défense en profondeur : mode actif SANS autorisation ----------------------
+
+
+@pytest.mark.parametrize("mode", ["actif", "agressif"])
+def test_mode_intrusif_sans_autorisation_ne_sonde_aucun_chemin(respx_mock, mode):
+    """Mode intrusif sans autorisation + accueil neutre : une seule requête, vers « / ».
+
+    Seule la page d'accueil est mockée : la sonde soft 404 ou un fichier de version
+    lèverait une erreur respx.
+    """
+    _mocker_accueil(respx_mock, "<html><body>Bonjour</body></html>")
+
+    resultats = _executer(mode=mode, autorisation=False)
+
+    assert _identifiants(resultats) == {"cms_non_detecte"}
+    assert [str(appel.request.url) for appel in respx_mock.calls] == [f"{_BASE}/"]
+
+
+def test_wordpress_actif_sans_autorisation_ni_xmlrpc_ni_author(respx_mock):
+    """WordPress 5.0 en actif sans autorisation : obsolescence locale, aucune sonde WordPress."""
+    _mocker_accueil(respx_mock, _generateur("WordPress 5.0"))
+
+    resultats = _executer(mode="actif", autorisation=False)
+
+    assert len(respx_mock.calls) == 1
+    assert str(respx_mock.calls.last.request.url) == f"{_BASE}/"
+    # La détection et l'obsolescence restent évaluées à partir de la page d'accueil.
+    assert _par_identifiant(resultats, "cms_obsolete") is not None
+    assert "wp_xmlrpc_actif" not in _identifiants(resultats)
+    assert "wp_enumeration_utilisateurs" not in _identifiants(resultats)
 
 
 # --- Mode actif : sonde de chemins -------------------------------------------

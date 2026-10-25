@@ -33,7 +33,7 @@ def _mocker_tout_en_404() -> None:
 
 def _executer():
     """Exécute la vérification des fichiers exposés sur exemple.com."""
-    cible = Cible(domaine=DOMAINE, mode="actif")
+    cible = Cible(domaine=DOMAINE, mode="actif", autorisation=True)
     return asyncio.run(VerificationFichiersExposes().executer(cible))
 
 
@@ -113,6 +113,23 @@ def test_erreur_reseau_sur_un_chemin_ne_leve_pas():
     assert resultats[0].reussi is True
 
 
+# --- Défense en profondeur : appel direct sans autorisation ------------------
+
+
+@pytest.mark.parametrize("mode", ["actif", "agressif"])
+def test_appel_direct_sans_autorisation_n_envoie_aucune_requete(respx_mock, mode):
+    """executer() appelé DIRECTEMENT sans autorisation : [] et aucune requête HTTP.
+
+    Le routeur respx n'a AUCUNE route : la moindre requête lèverait une erreur respx.
+    """
+    cible = Cible(domaine=DOMAINE, mode=mode)
+
+    resultats = asyncio.run(VerificationFichiersExposes().executer(cible))
+
+    assert resultats == []
+    assert len(respx_mock.calls) == 0
+
+
 # --- Activation par mode via scanner() ---------------------------------------
 
 
@@ -132,7 +149,7 @@ def test_scanner_actif_execute_les_exposes(monkeypatch):
     """En mode actif, le check « exposes » s'exécute et produit un résultat."""
     monkeypatch.setattr(scanner_module, "VERIFICATIONS", [VerificationFichiersExposes()])
     _mocker_tout_en_404()
-    cible = Cible(domaine=DOMAINE, mode="actif")
+    cible = Cible(domaine=DOMAINE, mode="actif", autorisation=True)
 
     resultats = asyncio.run(scanner(cible))
 

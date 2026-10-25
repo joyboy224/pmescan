@@ -67,6 +67,10 @@ class VerificationFichiersExposes(Verification):
     niveau_minimum = "actif"
 
     async def executer(self, cible: Cible) -> list[Resultat]:
+        # Défense en profondeur : même appelé directement en Python, ce check intrusif
+        # n'envoie aucune requête sans autorisation explicite.
+        if not cible.autorisation:
+            return []
         resultats: list[Resultat] = []
         # verify=False délibéré : la validité du certificat est traitée par le module
         # sslyze. Ce client httpx ne cherche que des fichiers exposés et ne doit pas
