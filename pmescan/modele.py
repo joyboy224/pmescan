@@ -32,3 +32,7 @@ class Cible:
     domaine: str
     ip: str | None = None
     mode: str = "passif"      # "passif" | "actif" | "agressif"
+    # OPT-IN : la vérification des CVE via l'API publique osv.dev envoie le nom et la
+    # version du CMS détecté à un tiers. Désactivée par défaut pour respecter le principe
+    # « aucune donnée envoyée à un tiers » (voir 03-CONCEPTION.md).
+    verifier_cve: bool = False

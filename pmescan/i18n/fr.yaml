@@ -263,3 +263,320 @@ fichier_expose_listing:
   qui_corrige: "hebergeur"
   effort: "15 min"
   action: "Désactiver l'affichage automatique du contenu des répertoires (Options -Indexes sur Apache)."
+
+# --- CMS (détection de version et failles) ----------------------------------
+
+cms_obsolete:
+  titre: "Logiciel du site (CMS) dans une version obsolète"
+  risque: >
+    Le CMS qui fait tourner le site n'est pas à jour. Les versions anciennes
+    cumulent des failles connues et publiées, faciles à exploiter en masse.
+  qui_corrige: "developpeur"
+  effort: "1 jour"
+  action: "Sauvegarder le site puis mettre à jour le CMS vers la dernière version stable, extensions comprises."
+
+cms_vulnerable:
+  titre: "Version du CMS touchée par des failles connues"
+  risque: >
+    La version détectée du CMS figure dans une base publique de vulnérabilités.
+    Un attaquant peut suivre un mode d'emploi déjà publié ; selon la faille,
+    cela peut lui permettre de voler des données, de modifier le site ou d'en
+    prendre le contrôle.
+  qui_corrige: "developpeur"
+  effort: "1 jour"
+  action: "Mettre à jour le CMS sans attendre et appliquer les correctifs de sécurité des failles listées."
+
+cms_cve_indeterminee:
+  titre: "État des failles du CMS non vérifiable"
+  risque: >
+    La base publique de vulnérabilités n'a pas permis de vérifier cette version
+    (base indisponible ou ne couvrant pas ce CMS). On ne sait donc pas si la
+    version du CMS est concernée par des failles connues.
+  qui_corrige: "developpeur"
+  effort: "15 min"
+  action: "Vérifier manuellement sur le site officiel du CMS si cette version est à jour et sans faille connue ; relancer l'analyse plus tard si la base était indisponible."
+
+wp_xmlrpc_actif:
+  titre: "Interface xmlrpc.php de WordPress accessible"
+  risque: >
+    Le fichier xmlrpc.php est actif. Il permet à un attaquant d'essayer des
+    mots de passe en masse et de se servir de votre site pour attaquer d'autres
+    sites. Il est rarement utile aux sites modernes.
+  qui_corrige: "developpeur"
+  effort: "20 min"
+  action: "Désactiver ou bloquer l'accès à xmlrpc.php si aucune application externe n'en a besoin."
+
+wp_enumeration_utilisateurs:
+  titre: "Noms d'utilisateurs WordPress devinables"
+  risque: >
+    Le site révèle les identifiants de connexion des comptes via /?author=1.
+    Connaître ces noms facilite grandement les attaques par mot de passe.
+  qui_corrige: "developpeur"
+  effort: "30 min"
+  action: "Bloquer l'énumération des auteurs (extension de sécurité ou règle serveur) et choisir des identifiants non devinables."
+
+# --- Ports ouverts (mode actif) ---------------------------------------------
+
+port_ouvert_ftp:
+  titre: "Service de transfert de fichiers (FTP) exposé"
+  risque: >
+    Le port FTP est ouvert sur Internet. Le FTP transmet souvent les mots de
+    passe en clair et sert de porte d'entrée aux essais de mots de passe en masse.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Fermer le FTP au public, le restreindre par pare-feu ou le remplacer par du SFTP."
+
+port_ouvert_ssh:
+  titre: "Accès d'administration SSH exposé"
+  risque: >
+    Le port SSH est ouvert à tous. Il est la cible permanente d'attaques
+    automatisées par mot de passe et d'exploitation de failles.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Restreindre l'accès SSH par pare-feu (adresses de confiance) et n'autoriser que l'authentification par clé."
+
+port_ouvert_telnet:
+  titre: "Accès d'administration Telnet exposé"
+  risque: >
+    Le port Telnet est ouvert. Telnet transmet tout en clair, mots de passe
+    compris, et n'a plus de raison d'être exposé aujourd'hui.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Désactiver Telnet et le remplacer par SSH, puis fermer le port au public."
+
+port_ouvert_smtp:
+  titre: "Serveur de messagerie (SMTP) exposé"
+  risque: >
+    Le port SMTP est ouvert. Mal configuré, il peut laisser des inconnus
+    envoyer des spams en passant par votre serveur, ce qui nuit à la
+    réputation de vos propres e-mails.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Vérifier que le serveur SMTP refuse d'envoyer des e-mails pour des inconnus et restreindre l'accès aux seuls expéditeurs légitimes."
+
+port_ouvert_pop3:
+  titre: "Relève du courrier (POP3) exposée"
+  risque: >
+    Le port POP3 est ouvert. Sans chiffrement, les identifiants de messagerie
+    peuvent être interceptés sur le réseau.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "N'autoriser que la version chiffrée (POP3S) et restreindre l'accès au port par pare-feu."
+
+port_ouvert_rpc:
+  titre: "Service RPC Windows exposé"
+  risque: >
+    Le port RPC est ouvert sur Internet. Ce service d'administration Windows a
+    connu de nombreuses failles critiques et n'a rien à faire en public.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Bloquer le port RPC au pare-feu et ne l'exposer que sur le réseau interne."
+
+port_ouvert_netbios:
+  titre: "Service de partage NetBIOS exposé"
+  risque: >
+    Le port NetBIOS est ouvert. Il divulgue des informations sur le réseau
+    Windows et sert de porte d'entrée à des attaques de partage de fichiers.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Fermer NetBIOS au public et ne l'autoriser que sur le réseau local."
+
+port_ouvert_imap:
+  titre: "Relève du courrier (IMAP) exposée"
+  risque: >
+    Le port IMAP est ouvert. Sans chiffrement, les identifiants de messagerie
+    peuvent être interceptés sur le réseau.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "N'autoriser que la version chiffrée (IMAPS) et restreindre l'accès au port par pare-feu."
+
+port_ouvert_snmp:
+  titre: "Supervision réseau (SNMP) exposée"
+  risque: >
+    Le port SNMP est ouvert. S'il garde son mot de passe d'usine, il révèle la
+    configuration de l'équipement et parfois des moyens de la modifier.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Fermer SNMP au public, changer les mots de passe d'usine (communautés) et préférer SNMPv3 chiffré."
+
+port_ouvert_ldap:
+  titre: "Annuaire LDAP exposé"
+  risque: >
+    Le port LDAP est ouvert. Il peut divulguer l'annuaire des comptes et servir
+    à des attaques d'authentification s'il n'est pas protégé.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Restreindre l'accès LDAP au réseau interne et n'autoriser que la version chiffrée (LDAPS)."
+
+port_ouvert_smb:
+  titre: "Partage de fichiers Windows (SMB) exposé"
+  risque: >
+    Le port SMB est ouvert sur Internet. SMB a été à l'origine d'attaques
+    massives (rançongiciels) et ne doit jamais être accessible publiquement.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Bloquer immédiatement le port SMB au pare-feu et ne l'autoriser que sur le réseau interne."
+
+port_ouvert_mssql:
+  titre: "Base de données SQL Server exposée"
+  risque: >
+    Le port de SQL Server est ouvert sur Internet. Une base de données
+    accessible au public expose toutes vos données à un vol direct.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Fermer le port au public et n'autoriser l'accès à la base que depuis les serveurs applicatifs."
+
+port_ouvert_oracle:
+  titre: "Base de données Oracle exposée"
+  risque: >
+    Le port de la base Oracle est ouvert sur Internet. Une base accessible au
+    public expose toutes vos données à un vol direct.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Fermer le port au public et n'autoriser l'accès à la base que depuis les serveurs applicatifs."
+
+port_ouvert_docker:
+  titre: "API Docker exposée sans protection"
+  risque: >
+    Le port de l'API Docker est ouvert. S'il n'est pas protégé, il donne un
+    contrôle total équivalent à un accès administrateur sur le serveur.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Fermer immédiatement le port de l'API Docker au public et n'y accéder que par un canal chiffré et authentifié."
+
+port_ouvert_web_3000:
+  titre: "Service web secondaire (port 3000) exposé"
+  risque: >
+    Un service web tourne sur le port 3000. Ce port héberge souvent une
+    interface d'administration, de supervision ou une application de test
+    qui peut être attaquée par mot de passe ou via des failles connues.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Vérifier ce qui tourne sur ce port, le placer derrière une authentification forte ou le fermer s'il n'est pas destiné au public."
+
+port_ouvert_mysql:
+  titre: "Base de données MySQL exposée"
+  risque: >
+    Le port MySQL est ouvert sur Internet. Une base de données accessible au
+    public expose toutes vos données à un vol direct.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Fermer le port au public et n'autoriser l'accès à la base que depuis les serveurs applicatifs."
+
+port_ouvert_rdp:
+  titre: "Bureau à distance Windows (RDP) exposé"
+  risque: >
+    Le port RDP est ouvert sur Internet. C'est l'une des portes d'entrée
+    préférées des rançongiciels via attaques par mot de passe.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Fermer RDP au public, le placer derrière un VPN et activer l'authentification à plusieurs facteurs."
+
+port_ouvert_postgresql:
+  titre: "Base de données PostgreSQL exposée"
+  risque: >
+    Le port PostgreSQL est ouvert sur Internet. Une base de données accessible
+    au public expose toutes vos données à un vol direct.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Fermer le port au public et n'autoriser l'accès à la base que depuis les serveurs applicatifs."
+
+port_ouvert_kibana:
+  titre: "Interface Kibana exposée"
+  risque: >
+    Le port de Kibana est ouvert. Il donne accès aux données indexées et à une
+    interface d'administration souvent sans authentification par défaut.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Protéger Kibana par une authentification et restreindre l'accès au port par pare-feu."
+
+port_ouvert_vnc:
+  titre: "Bureau à distance VNC exposé"
+  risque: >
+    Le port VNC est ouvert sur Internet. Un bureau distant accessible au public
+    est une cible directe pour la prise de contrôle de la machine.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Fermer VNC au public, le placer derrière un VPN et exiger un mot de passe fort."
+
+port_ouvert_couchdb:
+  titre: "Base de données CouchDB exposée"
+  risque: >
+    Le port CouchDB est ouvert sur Internet. Une base de données accessible au
+    public expose toutes vos données à un vol direct.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Fermer le port au public et n'autoriser l'accès à la base que depuis les serveurs applicatifs."
+
+port_ouvert_winrm:
+  titre: "Administration à distance Windows (WinRM) exposée"
+  risque: >
+    Le port WinRM est ouvert sur Internet. Ce canal d'administration Windows
+    permet d'exécuter des commandes à distance et ne doit pas être public.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Bloquer WinRM au pare-feu et ne l'autoriser que depuis le réseau d'administration interne."
+
+port_ouvert_redis:
+  titre: "Cache de données Redis exposé"
+  risque: >
+    Le port Redis est ouvert sur Internet. Par défaut Redis n'a pas de mot de
+    passe : un inconnu peut lire, modifier ou effacer les données en cache.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Fermer le port au public, activer l'authentification Redis et n'autoriser l'accès que depuis les serveurs applicatifs."
+
+port_ouvert_http_alt:
+  titre: "Service web secondaire (port 8080) exposé"
+  risque: >
+    Un service web tourne sur un port secondaire. Il héberge souvent une
+    interface d'administration ou une application de test mal protégée.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Vérifier ce qui tourne sur ce port, le protéger ou le fermer s'il n'est pas destiné au public."
+
+port_ouvert_elasticsearch:
+  titre: "Moteur de recherche Elasticsearch exposé"
+  risque: >
+    Le port Elasticsearch est ouvert sur Internet. Sans protection, toutes les
+    données indexées peuvent être lues ou effacées par n'importe qui.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Fermer le port au public, activer l'authentification et n'autoriser l'accès que depuis les serveurs applicatifs."
+
+port_ouvert_memcached:
+  titre: "Cache mémoire Memcached exposé"
+  risque: >
+    Le port Memcached est ouvert sur Internet. Il n'a pas de mot de passe et
+    sert couramment à des pirates pour rendre votre site ou d'autres sites
+    inaccessibles.
+  qui_corrige: "hebergeur"
+  effort: "30 min"
+  action: "Fermer le port au public et lier Memcached uniquement à l'adresse locale (127.0.0.1)."
+
+port_ouvert_rabbitmq:
+  titre: "File de messages RabbitMQ exposée"
+  risque: >
+    Le port RabbitMQ est ouvert. Avec les identifiants par défaut, un inconnu
+    peut lire ou injecter des messages dans vos traitements.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Fermer le port au public, changer les identifiants par défaut et restreindre l'accès par pare-feu."
+
+port_ouvert_mongodb:
+  titre: "Base de données MongoDB exposée"
+  risque: >
+    Le port MongoDB est ouvert sur Internet. De nombreuses bases MongoDB
+    publiques ont été volées ou rançonnées faute d'authentification.
+  qui_corrige: "hebergeur"
+  effort: "1 h"
+  action: "Fermer le port au public, activer l'authentification et n'autoriser l'accès que depuis les serveurs applicatifs."
+
+ports_hote_introuvable:
+  titre: "Test des ports impossible : adresse du site introuvable"
+  risque: >
+    Le scanner n'a pas trouvé l'adresse du serveur à partir du nom de domaine.
+    Les ports n'ont pas pu être testés : un service exposé peut passer inaperçu.
+  qui_corrige: "hebergeur"
+  effort: "15 min"
+  action: "Vérifier que le domaine pointe bien vers votre serveur (enregistrement DNS A ou AAAA), puis relancer l'analyse."

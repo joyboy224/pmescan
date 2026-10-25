@@ -25,9 +25,11 @@ import pytest
 import respx
 
 import pmescan.checks.tls as tls_module
+from pmescan.checks.cms import VerificationCms
 from pmescan.checks.dns_mail import VerificationDnsMail
 from pmescan.checks.entetes import VerificationEntetes
 from pmescan.checks.exposes import VerificationFichiersExposes
+from pmescan.checks.ports import _PORTS, VerificationPorts
 from pmescan.checks.tls import VerificationTls
 from pmescan.i18n import charger_textes
 from pmescan.modele import Cible
@@ -39,6 +41,8 @@ from tests.conftest import (
     charger_fixture,
     construire_rapport,
     construire_scan_result,
+    faux_open_connection,
+    faux_resoudre,
     tentative_chiffrements,
 )
 
@@ -190,12 +194,83 @@ def _resultats_exposes() -> list[list]:
         return [asyncio.run(verif.executer(_CIBLE))]
 
 
+def _resultats_cms() -> list[list]:
+    verif = VerificationCms()
+    # Mode ACTIF (sonde des chemins et vérifications WordPress) et OSV activé : sans
+    # verifier_cve=True, cms_vulnerable et cms_cve_indeterminee ne sont jamais émis.
+    cible = Cible(domaine="exemple.com", mode="actif", verifier_cve=True)
+    base = "https://exemple.com"
+    url_osv = "https://api.osv.dev/v1/query"
+
+    def _accueil(routeur, generateur: str) -> None:
+        routeur.get(f"{base}/").mock(
+            return_value=httpx.Response(
+                200, text=f'<meta name="generator" content="{generateur}" />'
+            )
+        )
+
+    resultats: list[list] = []
+
+    # 1) WordPress 5.0 en mode actif -> cms_obsolete, wp_xmlrpc_actif,
+    #    wp_enumeration_utilisateurs (+ cms_cve_indeterminee : WordPress non couvert par OSV).
+    with respx.mock(assert_all_called=False) as routeur:
+        routeur.get(f"{base}/xmlrpc.php").mock(
+            return_value=httpx.Response(405, text="XML-RPC server accepts POST requests only.")
+        )
+        # Route « /?author=1 » AVANT la page d'accueil : la première route qui
+        # correspond gagne, et « / » sans paramètre accepterait aussi la requête.
+        routeur.get(url=f"{base}/", params={"author": "1"}).mock(
+            return_value=httpx.Response(301, headers={"location": f"{base}/author/admin/"})
+        )
+        routeur.get(f"{base}/author/admin/").mock(return_value=httpx.Response(200))
+        _accueil(routeur, "WordPress 5.0")
+        resultats.append(asyncio.run(verif.executer(cible)))
+
+    # 2) Drupal 10.1 + OSV connaît des failles -> cms_vulnerable.
+    with respx.mock(assert_all_called=False) as routeur:
+        _accueil(routeur, "Drupal 10.1")
+        routeur.post(url_osv).mock(
+            return_value=httpx.Response(200, json={"vulns": [{"id": "CVE-2024-0001"}]})
+        )
+        resultats.append(asyncio.run(verif.executer(cible)))
+
+    # 3) Drupal 10.1 + OSV injoignable -> cms_cve_indeterminee.
+    with respx.mock(assert_all_called=False) as routeur:
+        _accueil(routeur, "Drupal 10.1")
+        routeur.post(url_osv).mock(side_effect=httpx.ConnectError("osv injoignable"))
+        resultats.append(asyncio.run(verif.executer(cible)))
+
+    return resultats
+
+
+def _resultats_ports() -> list[list]:
+    verif = VerificationPorts()
+    resultats: list[list] = []
+
+    # 1) Tous les ports surveillés « ouverts » -> chaque port_ouvert_* est émis. La
+    #    résolution est remplacée par une IP factice : aucune requête DNS réelle.
+    tous_les_ports = {port for port, _, _ in _PORTS}
+    with (
+        mock.patch.object(VerificationPorts, "_resoudre", faux_resoudre()),
+        mock.patch.object(asyncio, "open_connection", faux_open_connection(tous_les_ports)),
+    ):
+        resultats.append(asyncio.run(verif.executer(_CIBLE)))
+
+    # 2) Nom d'hôte introuvable -> ports_hote_introuvable.
+    with mock.patch.object(VerificationPorts, "_resoudre", faux_resoudre(None)):
+        resultats.append(asyncio.run(verif.executer(_CIBLE)))
+
+    return resultats
+
+
 # Association vérification -> fonction de scénarios. Clé = attribut ``nom`` du check.
 _SCENARIOS_PAR_NOM = {
     "tls": _resultats_tls,
     "entetes": _resultats_entetes,
     "dns_mail": _resultats_dns_mail,
     "exposes": _resultats_exposes,
+    "cms": _resultats_cms,
+    "ports": _resultats_ports,
 }
 
 
@@ -251,6 +326,14 @@ def test_la_collecte_couvre_chaque_check():
         "mx_absent",
         "dns_domaine_introuvable",
         "fichier_expose_git",
+        "cms_obsolete",
+        "cms_vulnerable",
+        "cms_cve_indeterminee",
+        "wp_xmlrpc_actif",
+        "wp_enumeration_utilisateurs",
+        "port_ouvert_mysql",
+        "port_ouvert_web_3000",
+        "ports_hote_introuvable",
     }
     manquants = attendus_representatifs - set(_IDENTIFIANTS_NON_REUSSIS)
     assert not manquants, f"Scénarios à revoir, identifiants non collectés : {manquants}"

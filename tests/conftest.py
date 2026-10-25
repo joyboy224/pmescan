@@ -115,3 +115,57 @@ def cible_exemple():
     from pmescan.modele import Cible
 
     return Cible(domaine="exemple.com", mode="passif")
+
+
+# --- Fabrique de fausse connexion TCP (scan de ports) ------------------------
+
+# Adresse IP factice (plage de documentation TEST-NET-1, RFC 5737) renvoyée par la fausse
+# résolution : aucun test de ports ne doit dépendre du vrai DNS.
+ADRESSE_FACTICE = "192.0.2.10"
+
+
+class FauxEcrivain:
+    """Imite le StreamWriter d'asyncio : compte les appels à ``close()``."""
+
+    def __init__(self) -> None:
+        self.fermetures = 0
+
+        async def _attendre_fermeture() -> None:
+            return None
+
+        # Le code de production attend l'API asyncio : méthode ``wait_closed``.
+        self.wait_closed = _attendre_fermeture
+
+    def close(self) -> None:
+        self.fermetures += 1
+
+
+def faux_open_connection(ports_ouverts: set[int], ecrivains: list | None = None):
+    """Fausse ``asyncio.open_connection`` : réussit pour ``ports_ouverts``, échoue sinon.
+
+    Aucune socket réelle n'est ouverte. Les ports hors de l'ensemble lèvent ``OSError``
+    (interprété par le check comme « port fermé ou filtré »). Si ``ecrivains`` est fourni,
+    chaque faux écrivain créé y est ajouté pour vérifier ensuite sa fermeture.
+    """
+
+    async def _ouvrir(hote, port):
+        if port in ports_ouverts:
+            ecrivain = FauxEcrivain()
+            if ecrivains is not None:
+                ecrivains.append(ecrivain)
+            return SimpleNamespace(), ecrivain
+        raise OSError("connexion refusée")
+
+    return _ouvrir
+
+
+def faux_resoudre(adresse: str | None = ADRESSE_FACTICE):
+    """Fausse ``VerificationPorts._resoudre`` : renvoie ``adresse`` sans aucun DNS.
+
+    ``adresse=None`` simule un nom d'hôte introuvable.
+    """
+
+    async def _resoudre(self, hote):
+        return adresse
+
+    return _resoudre

@@ -74,12 +74,23 @@ def scan(
         "--sortie",
         help="Chemin du fichier PDF à écrire (défaut : rapport-<domaine>.pdf).",
     ),
+    verifier_cve: bool = typer.Option(
+        False,
+        "--verifier-cve",
+        help=(
+            "Vérifie les CVE connues du CMS via l'API publique osv.dev. "
+            "Désactivé par défaut : cette option contacte un tiers (osv.dev). Seuls le "
+            "nom et la version du CMS détecté lui sont envoyés, jamais le domaine analysé."
+        ),
+    ),
 ) -> None:
     """Analyse un domaine et affiche les résultats.
 
-    Le scan couvre TLS, en-têtes, DNS/messagerie, et en mode actif les fichiers exposés.
+    Le scan couvre TLS, en-têtes, DNS/messagerie et la détection du CMS (page d'accueil).
+    En mode actif, il ajoute les fichiers exposés, la sonde de chemins CMS (fichiers de
+    version, vérifications WordPress) et le test des ports.
     """
-    cible = Cible(domaine=domaine, mode=mode)
+    cible = Cible(domaine=domaine, mode=mode, verifier_cve=verifier_cve)
     resultats = asyncio.run(scanner(cible))
     score, note = calculer_note(resultats)
     if pdf:

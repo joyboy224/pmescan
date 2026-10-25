@@ -128,5 +128,46 @@ def test_cli_scan_pdf_respecte_option_sortie(monkeypatch, tmp_path):
     assert chemin_voulu in resultat.stdout
 
 
+# --- Option --verifier-cve (opt-in OSV) --------------------------------------
+
+
+def _capturer_cible(monkeypatch) -> list:
+    """Remplace le scanner par un faux qui mémorise la Cible reçue (aucun réseau)."""
+    cibles: list = []
+
+    async def _faux_scanner(cible):
+        cibles.append(cible)
+        return []
+
+    monkeypatch.setattr(cli_module, "scanner", _faux_scanner)
+    return cibles
+
+
+def test_cli_verifier_cve_desactive_par_defaut(monkeypatch):
+    """Sans --verifier-cve, la Cible transmise au scanner a verifier_cve=False."""
+    cibles = _capturer_cible(monkeypatch)
+
+    resultat = runner.invoke(app, ["scan", "exemple.com", "--json"])
+
+    assert resultat.exit_code == 0
+    assert len(cibles) == 1
+    assert cibles[0].verifier_cve is False
+
+
+def test_cli_verifier_cve_transmis_a_la_cible(monkeypatch):
+    """Avec --verifier-cve, la Cible transmise au scanner a verifier_cve=True."""
+    cibles = _capturer_cible(monkeypatch)
+
+    resultat = runner.invoke(
+        app, ["scan", "exemple.com", "--mode", "actif", "--verifier-cve", "--json"]
+    )
+
+    assert resultat.exit_code == 0
+    assert len(cibles) == 1
+    assert cibles[0].verifier_cve is True
+    assert cibles[0].domaine == "exemple.com"
+    assert cibles[0].mode == "actif"
+
+
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-v"]))

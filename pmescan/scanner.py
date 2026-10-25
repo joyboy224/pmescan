@@ -3,9 +3,11 @@
 import asyncio
 
 from pmescan.checks.base import Verification
+from pmescan.checks.cms import VerificationCms
 from pmescan.checks.dns_mail import VerificationDnsMail
 from pmescan.checks.entetes import VerificationEntetes
 from pmescan.checks.exposes import VerificationFichiersExposes
+from pmescan.checks.ports import VerificationPorts
 from pmescan.checks.tls import VerificationTls
 from pmescan.modele import Cible, Gravite, Resultat
 
@@ -17,7 +19,9 @@ VERIFICATIONS: list[Verification] = [
     VerificationTls(),
     VerificationEntetes(),
     VerificationDnsMail(),
+    VerificationCms(),
     VerificationFichiersExposes(),
+    VerificationPorts(),
 ]
 
 
