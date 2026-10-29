@@ -1,14 +1,21 @@
 """Tests du calcul de la note globale (score sur 100 et lettre A–F)."""
 
+from itertools import count
+
 import pytest
 
 from pmescan.modele import Gravite, Resultat
 from pmescan.notation import calculer_note
 
+# Identifiants uniques : chaque appel à _probleme() représente un défaut distinct.
+_NUMEROS = count()
 
-def _probleme(gravite: Gravite) -> Resultat:
-    """Fabrique un résultat non réussi de la gravité demandée."""
-    return Resultat(identifiant="probleme", gravite=gravite, reussi=False)
+
+def _probleme(gravite: Gravite, identifiant: str | None = None) -> Resultat:
+    """Fabrique un résultat non réussi de la gravité demandée (défaut distinct par défaut)."""
+    if identifiant is None:
+        identifiant = f"probleme_{next(_NUMEROS)}"
+    return Resultat(identifiant=identifiant, gravite=gravite, reussi=False)
 
 
 def _succes(gravite: Gravite = Gravite.INFO) -> Resultat:
@@ -62,6 +69,39 @@ def test_gravites_mixtes_cumulent_les_penalites():
     score, lettre = calculer_note(resultats)
     assert score == 87
     assert lettre == "B"
+
+
+def test_meme_identifiant_ne_penalise_qu_une_fois():
+    """Trois cookies non sécurisés (même identifiant) -> une seule pénalité de 20."""
+    resultats = [_probleme(Gravite.ELEVEE, "cookie_non_securise") for _ in range(3)]
+    assert calculer_note(resultats) == (80, "B")
+
+
+def test_meme_identifiant_garde_la_gravite_la_plus_lourde():
+    """Un identifiant vu en FAIBLE puis en ELEVEE -> seule la pénalité ELEVEE compte."""
+    resultats = [
+        _probleme(Gravite.FAIBLE, "entete_fuite_version"),
+        _probleme(Gravite.ELEVEE, "entete_fuite_version"),
+    ]
+    assert calculer_note(resultats) == (80, "B")
+
+
+def test_identifiants_distincts_cumulent():
+    """Deux ports sensibles différents restent deux défauts distincts : 40 + 40."""
+    resultats = [
+        _probleme(Gravite.CRITIQUE, "port_ouvert_mysql"),
+        _probleme(Gravite.CRITIQUE, "port_ouvert_redis"),
+    ]
+    assert calculer_note(resultats) == (20, "E")
+
+
+def test_identifiant_reussi_ne_compense_pas_un_echec():
+    """Un même identifiant réussi ailleurs n'annule pas la pénalité de l'échec."""
+    resultats = [
+        Resultat(identifiant="x", gravite=Gravite.MOYENNE, reussi=True),
+        _probleme(Gravite.MOYENNE, "x"),
+    ]
+    assert calculer_note(resultats) == (90, "A")
 
 
 if __name__ == "__main__":  # pragma: no cover

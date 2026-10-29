@@ -196,6 +196,10 @@ Chaque problème non résolu retire des points à un score de départ de 100 :
 | faible | 3 |
 | info | 0 |
 
+Le score reste toujours entre 0 et 100. Un même défaut ne coûte des points qu'une
+fois : trois cookies non sécurisés comptent comme un seul problème. En revanche, deux
+ports sensibles différents restent deux problèmes distincts.
+
 | Lettre | Score |
 |---|---|
 | A | 90 et plus |

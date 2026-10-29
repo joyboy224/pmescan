@@ -17,12 +17,21 @@ def calculer_note(resultats: list[Resultat]) -> tuple[int, str]:
 
     Seuls les résultats non réussis (``reussi=False``) retirent des points. Le
     score est plafonné dans l'intervalle [0, 100].
+
+    Pas de double pénalité : un même identifiant ne retire des points qu'une fois.
+    Trois cookies non sécurisés (``cookie_non_securise``) comptent comme un seul
+    défaut. Si un identifiant apparaît avec plusieurs gravités, la plus lourde est
+    retenue. Des identifiants distincts (ex. deux ports sensibles ouverts) restent
+    des défauts distincts.
     """
-    score = 100
+    penalites: dict[str, int] = {}
     for resultat in resultats:
         if not resultat.reussi:
-            score -= PENALITES[resultat.gravite.value]
-    score = max(0, min(100, score))
+            penalite = PENALITES[resultat.gravite.value]
+            penalites[resultat.identifiant] = max(
+                penalite, penalites.get(resultat.identifiant, 0)
+            )
+    score = max(0, min(100, 100 - sum(penalites.values())))
     lettre = (
         "A" if score >= 90
         else "B" if score >= 75
