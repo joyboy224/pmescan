@@ -34,10 +34,10 @@ def dossier_journal(monkeypatch, tmp_path):
 
 
 def test_cli_version_affiche_la_version():
-    """`pmescan --version` affiche « pmescan 0.1.1 »."""
+    """`pmescan --version` affiche « pmescan 0.1.2 »."""
     resultat = runner.invoke(app, ["--version"])
     assert resultat.exit_code == 0
-    assert "pmescan 0.1.1" in resultat.stdout
+    assert "pmescan 0.1.2" in resultat.stdout
 
 
 def test_cli_scan_json_produit_du_json_valide(monkeypatch):
