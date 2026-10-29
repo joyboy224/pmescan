@@ -86,6 +86,42 @@ def test_cookies_securises_renvoie_reussi(cible_exemple):
 
 
 @respx.mock
+@pytest.mark.parametrize("nom", ["XSRF-TOKEN", "csrftoken", "_csrf"])
+def test_cookie_anti_csrf_lisible_par_javascript_n_est_pas_signale(cible_exemple, nom):
+    """Cookie anti-CSRF (Laravel, Django, Express) sans HttpOnly : normal, non signalé.
+
+    Le JavaScript du site doit pouvoir le lire pour le renvoyer dans un en-tête : HttpOnly
+    l'en empêcherait. Secure et SameSite restent exigés.
+    """
+    respx.get("https://exemple.com/").mock(
+        return_value=httpx.Response(
+            200, headers=[("set-cookie", f"{nom}=abc; path=/; secure; samesite=lax")]
+        )
+    )
+
+    resultats = asyncio.run(VerificationEntetes().executer(cible_exemple))
+
+    assert _par_identifiant(resultats, "cookie_non_securise") is None
+    assert _par_identifiant(resultats, "cookies_securises") is not None
+
+
+@respx.mock
+def test_cookie_anti_csrf_sans_secure_reste_signale(cible_exemple):
+    """Cookie anti-CSRF sans Secure : signalé, avec Secure seul dans les manquants."""
+    respx.get("https://exemple.com/").mock(
+        return_value=httpx.Response(
+            200, headers=[("set-cookie", "XSRF-TOKEN=abc; path=/; samesite=lax")]
+        )
+    )
+
+    resultats = asyncio.run(VerificationEntetes().executer(cible_exemple))
+
+    resultat = _par_identifiant(resultats, "cookie_non_securise")
+    assert resultat is not None
+    assert resultat.details["attributs_manquants"] == ["Secure"]
+
+
+@respx.mock
 def test_entete_fuite_version_detecte(cible_exemple):
     """Un en-tête Server révélant une version produit entete_fuite_version en gravité faible."""
     respx.get("https://exemple.com/").mock(

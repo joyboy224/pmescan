@@ -39,6 +39,11 @@ _ENTETES_ATTENDUS: tuple[tuple[str, str, str, Gravite], ...] = (
 )
 
 # En-têtes susceptibles de divulguer une version logicielle.
+# Cookies anti-CSRF des frameworks courants (Laravel, Angular, Django, Express/csurf) :
+# le JavaScript du site doit les lire pour les renvoyer dans un en-tête. HttpOnly l'en
+# empêcherait, son absence est donc normale. Secure et SameSite restent exigés.
+_COOKIES_ANTI_CSRF = frozenset({"xsrf-token", "csrftoken", "csrf_token", "csrf-token", "_csrf"})
+
 _ENTETES_VERSION = ("server", "x-powered-by")
 
 # Un numéro de version ressemble à « 2.4.41 » ou « 7.4 ».
@@ -120,7 +125,7 @@ class VerificationEntetes(Verification):
             manquants: list[str] = []
             if "secure" not in attributs:
                 manquants.append("Secure")
-            if "httponly" not in attributs:
+            if "httponly" not in attributs and nom_cookie.lower() not in _COOKIES_ANTI_CSRF:
                 manquants.append("HttpOnly")
             if not any(segment.startswith("samesite") for segment in attributs):
                 manquants.append("SameSite")
