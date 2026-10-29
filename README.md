@@ -36,14 +36,26 @@ propose une **action priorisée**.
 
 ## Installation
 
-pmescan demande Python 3.11 ou plus récent.
+pmescan demande Python 3.11 ou plus récent. Il est publié sur
+[PyPI](https://pypi.org/project/pmescan/) :
 
 ```bash
-git clone <url-du-depot> pmescan
+pip install pmescan
+```
+
+Pour passer à la dernière version : `pip install -U pmescan`.
+
+Pour installer depuis le code source :
+
+```bash
+git clone https://github.com/joyboy224/pmescan.git
 cd pmescan
 python -m venv .venv
 .venv/bin/pip install .          # Windows : .venv\Scripts\pip install .
 ```
+
+Un test automatique (GitHub Actions, chaque semaine) installe pmescan depuis PyPI dans
+un environnement neuf, sous Linux, macOS et Windows, et vérifie que la commande démarre.
 
 Le rapport **PDF** passe par [WeasyPrint](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html),
 qui a besoin des bibliothèques système Pango et GTK. Elles sont simples à installer

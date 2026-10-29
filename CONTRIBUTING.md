@@ -9,7 +9,7 @@ Merci de votre intérêt ! Toutes les contributions comptent, même sans écrire
 ## Installer l'environnement de développement
 
 ```bash
-git clone <url-du-depot> pmescan
+git clone https://github.com/joyboy224/pmescan.git
 cd pmescan
 python -m venv .venv
 .venv/bin/pip install -e ".[dev]"     # Windows : .venv\Scripts\pip install -e ".[dev]"
