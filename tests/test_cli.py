@@ -4,7 +4,11 @@ Aucun réseau : ``scanner`` est toujours remplacé par un faux. Aucun test n'éc
 vrai ``~/.pmescan`` : une fixture automatique pointe ``PMESCAN_DOSSIER`` vers ``tmp_path``.
 """
 
+import io
 import json
+import os
+import subprocess
+import sys
 from datetime import datetime
 
 import pytest
@@ -30,10 +34,10 @@ def dossier_journal(monkeypatch, tmp_path):
 
 
 def test_cli_version_affiche_la_version():
-    """`pmescan --version` affiche « pmescan 0.1.0 »."""
+    """`pmescan --version` affiche « pmescan 0.1.1 »."""
     resultat = runner.invoke(app, ["--version"])
     assert resultat.exit_code == 0
-    assert "pmescan 0.1.0" in resultat.stdout
+    assert "pmescan 0.1.1" in resultat.stdout
 
 
 def test_cli_scan_json_produit_du_json_valide(monkeypatch):
@@ -570,6 +574,57 @@ def test_cli_interruption_clavier_donne_code_2(monkeypatch):
     assert resultat.exit_code == 2
     assert "Analyse interrompue" in resultat.stderr
     _sans_trace(resultat)
+
+
+def test_forcer_utf8_reconfigure_un_flux_cp1252(monkeypatch):
+    """Un flux en cp1252 (sortie redirigée sous Windows) est repassé en UTF-8."""
+    tampon = io.BytesIO()
+    flux = io.TextIOWrapper(tampon, encoding="cp1252")
+    monkeypatch.setattr(sys, "stdout", flux)
+
+    cli_module._forcer_utf8()
+    print("propriétaire", end="")
+    flux.flush()
+
+    assert tampon.getvalue() == "propriétaire".encode()
+
+
+def test_forcer_utf8_ignore_un_flux_sans_reconfigure(monkeypatch):
+    """Un flux qui n'est pas un TextIOWrapper (ex. StringIO) est laissé tel quel."""
+    flux = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", flux)
+
+    cli_module._forcer_utf8()
+
+    assert sys.stdout is flux
+
+
+def test_cli_sortie_redirigee_reste_en_utf8(dossier_journal):
+    """Sortie redirigée avec un encodage local cp1252 : les octets écrits restent UTF-8.
+
+    Reproduit le cas Windows (`pmescan ... > fichier`) sur tout système grâce à
+    PYTHONIOENCODING. Le refus du mode agressif sans flag n'envoie aucune requête réseau.
+    """
+    env = {**os.environ, "PYTHONIOENCODING": "cp1252", "PMESCAN_DOSSIER": str(dossier_journal)}
+    env.pop("PYTHONUTF8", None)
+
+    processus = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from pmescan.cli import app; app()",
+            "scan",
+            "exemple.sn",
+            "--mode",
+            "agressif",
+        ],
+        capture_output=True,
+        env=env,
+        timeout=60,
+    )
+
+    assert processus.returncode == 3
+    assert "propriétaire" in processus.stderr.decode("utf-8")
 
 
 if __name__ == "__main__":  # pragma: no cover

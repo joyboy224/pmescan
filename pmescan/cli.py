@@ -2,7 +2,9 @@
 
 import asyncio
 import dataclasses
+import io
 import json
+import sys
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _version_installee
 from typing import Annotated
@@ -40,6 +42,18 @@ def obtenir_version() -> str:
         return __version__
 
 
+def _forcer_utf8() -> None:
+    """Force l'encodage UTF-8 sur stdout et stderr.
+
+    Sous Windows, une sortie redirigée (``pmescan scan ... --json > resultat.json``) prend
+    sinon l'encodage local (cp1252) : les accents deviennent illisibles et le JSON produit
+    n'est plus de l'UTF-8 valide. Les flux qui ne sont pas des TextIOWrapper sont ignorés.
+    """
+    for flux in (sys.stdout, sys.stderr):
+        if isinstance(flux, io.TextIOWrapper):
+            flux.reconfigure(encoding="utf-8")
+
+
 def _rappel_version(demandee: bool) -> None:
     """Affiche la version puis quitte, lorsque l'option --version est passée."""
     if demandee:
@@ -58,6 +72,7 @@ def principal(
     ),
 ) -> None:
     """pmescan — scanner de sécurité pour PME francophones."""
+    _forcer_utf8()
 
 
 def _resultat_en_dict(resultat: Resultat) -> dict[str, object]:

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pmescan"
-version = "0.1.0"
+version = "0.1.1"
 description = "Scanner de sécurité pour PME francophones, avec rapport PDF en français clair."
 readme = "README.md"
 requires-python = ">=3.11"
