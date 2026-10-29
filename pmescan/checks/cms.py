@@ -188,7 +188,7 @@ class VerificationCms(Verification):
 
         # OPT-IN : l'interrogation d'OSV envoie le nom et la version du CMS à un tiers
         # (api.osv.dev), jamais le domaine analysé. Pour respecter le principe « aucune
-        # donnée envoyée à un tiers » de 03-CONCEPTION.md, on ne l'exécute que si la cible
+        # donnée envoyée à un tiers » du projet, on ne l'exécute que si la cible
         # a activé explicitement --verifier-cve.
         resultat_osv: Resultat | None = None
         if cible.verifier_cve:

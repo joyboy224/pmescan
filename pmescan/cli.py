@@ -17,7 +17,7 @@ from pmescan.notation import calculer_note
 from pmescan.rapport.generateur import construire_contexte, ecrire_pdf, rendre_html
 from pmescan.scanner import scanner
 
-# Codes de sortie de la commande scan (voir 02-UTILISATION.md).
+# Codes de sortie de la commande scan (voir README.md).
 CODE_OK = 0
 CODE_CRITIQUE = 1
 CODE_ERREUR = 2

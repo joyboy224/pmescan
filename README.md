@@ -208,10 +208,6 @@ configurés sur votre machine.
 
 | Fichier | Contenu |
 |---|---|
-| [01-VISION.md](01-VISION.md) | À quoi sert le projet, pour qui, objectifs. |
-| [02-UTILISATION.md](02-UTILISATION.md) | Utilisation au quotidien. |
-| [03-CONCEPTION.md](03-CONCEPTION.md) | Architecture, stack, modèle de données. |
-| [04-ETAPES.md](04-ETAPES.md) | Feuille de route de construction. |
 | [README-mode-agressif.md](README-mode-agressif.md) | Modes intrusifs, garde d'autorisation, cadre légal. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Comment contribuer. |
 

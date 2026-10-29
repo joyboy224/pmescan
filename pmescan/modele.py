@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 
-class Gravite(str, Enum):  # noqa: UP042 - signature imposée par 03-CONCEPTION.md
+class Gravite(str, Enum):  # noqa: UP042 - signature publique à conserver
     """Niveau de gravité d'un problème détecté."""
 
     CRITIQUE = "critique"
@@ -34,7 +34,7 @@ class Cible:
     mode: str = "passif"      # "passif" | "actif" | "agressif"
     # OPT-IN : la vérification des CVE via l'API publique osv.dev envoie le nom et la
     # version du CMS détecté à un tiers. Désactivée par défaut pour respecter le principe
-    # « aucune donnée envoyée à un tiers » (voir 03-CONCEPTION.md).
+    # « aucune donnée envoyée à un tiers » (voir README.md, « Vie privée »).
     verifier_cve: bool = False
     # DÉFENSE EN PROFONDEUR : vrai seulement si l'utilisateur a explicitement confirmé
     # disposer d'une autorisation sur la cible (--jai-l-autorisation en mode intrusif).

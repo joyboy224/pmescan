@@ -23,3 +23,10 @@ consent.log
 .idea/
 .DS_Store
 Thumbs.db
+
+# Documents de travail internes (gardés en local)
+01-VISION.md
+02-UTILISATION.md
+03-CONCEPTION.md
+04-ETAPES.md
+.claude/

@@ -2,7 +2,7 @@
 
 from pmescan.modele import Resultat
 
-# Points retirés par problème non résolu, selon sa gravité (voir 03-CONCEPTION.md).
+# Points retirés par problème non résolu, selon sa gravité (voir README.md, « Notation »).
 PENALITES: dict[str, int] = {
     "critique": 40,
     "elevee": 20,
