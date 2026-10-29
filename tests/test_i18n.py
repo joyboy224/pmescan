@@ -25,6 +25,7 @@ import pytest
 import respx
 
 import pmescan.checks.tls as tls_module
+import pmescan.reseau as reseau
 from pmescan.checks.cms import VerificationCms
 from pmescan.checks.dns_mail import VerificationDnsMail
 from pmescan.checks.entetes import VerificationEntetes
@@ -35,6 +36,7 @@ from pmescan.i18n import charger_textes
 from pmescan.modele import Cible
 from pmescan.scanner import VERIFICATIONS
 from tests.conftest import (
+    ADRESSE_PUBLIQUE_FACTICE,
     FauxChiffrement,
     FauxChiffrementAccepte,
     FauxResultatChiffrements,
@@ -192,6 +194,10 @@ def _resultats_exposes() -> list[list]:
         routeur.get("https://exemple.com/").mock(
             return_value=httpx.Response(200, text="<title>Index of /</title>")
         )
+        # Chemin témoin (adresse inexistante) : 404, le site ne répond pas 200 partout.
+        routeur.get(url__regex=r"^https://exemple\.com/pmescan-inexistant-").mock(
+            return_value=httpx.Response(404)
+        )
         return [asyncio.run(verif.executer(_CIBLE))]
 
 
@@ -261,7 +267,20 @@ def _resultats_ports() -> list[list]:
     with mock.patch.object(VerificationPorts, "_resoudre", faux_resoudre(None)):
         resultats.append(asyncio.run(verif.executer(_CIBLE)))
 
+    # 3) Domaine pointant vers une adresse interne -> ports_cible_non_publique.
+    with mock.patch.object(reseau, "resoudre", _resolution_vers(["127.0.0.1"])):
+        resultats.append(asyncio.run(verif.executer(_CIBLE)))
+
     return resultats
+
+
+def _resolution_vers(adresses: list[str]):
+    """Fausse ``pmescan.reseau.resoudre`` : renvoie toujours ``adresses``, sans DNS."""
+
+    async def _resoudre(hote):
+        return list(adresses)
+
+    return _resoudre
 
 
 # Association vérification -> fonction de scénarios. Clé = attribut ``nom`` du check.
@@ -291,9 +310,12 @@ def _collecter_identifiants_non_reussis() -> set[str]:
         )
 
     identifiants: set[str] = set()
-    for nom in sorted(noms_checks):
-        for liste in _SCENARIOS_PAR_NOM[nom]():
-            identifiants.update(r.identifiant for r in liste if not r.reussi)
+    # La collecte tourne à l'import, hors des fixtures pytest : on remplace ici la
+    # résolution DNS de la garde réseau pour qu'aucun scénario ne touche au vrai DNS.
+    with mock.patch.object(reseau, "resoudre", _resolution_vers([ADRESSE_PUBLIQUE_FACTICE])):
+        for nom in sorted(noms_checks):
+            for liste in _SCENARIOS_PAR_NOM[nom]():
+                identifiants.update(r.identifiant for r in liste if not r.reussi)
 
     # Les identifiants de repli f"{nom}_erreur_interne" sont produits par scanner.py quand
     # une vérification lève. Ce sont des diagnostics TECHNIQUES (hors périmètre i18n métier) :

@@ -10,6 +10,7 @@ import httpx
 import pytest
 import respx
 
+import pmescan.checks.exposes as exposes_module
 import pmescan.scanner as scanner_module
 from pmescan.checks.exposes import VerificationFichiersExposes
 from pmescan.modele import Cible, Gravite
@@ -26,9 +27,17 @@ def _par_identifiant(resultats, identifiant):
 
 
 def _mocker_tout_en_404() -> None:
-    """Fait répondre 404 à tous les chemins sensibles (rien n'est exposé)."""
+    """Fait répondre 404 à tous les chemins sensibles et au chemin témoin aléatoire."""
     for chemin in _CHEMINS:
         respx.get(f"https://{DOMAINE}{chemin}").mock(return_value=httpx.Response(404))
+    _mocker_temoin(httpx.Response(404))
+
+
+def _mocker_temoin(reponse: httpx.Response) -> respx.Route:
+    """Fait répondre ``reponse`` au chemin témoin (adresse inexistante, suffixe aléatoire)."""
+    return respx.get(url__regex=rf"^https://{DOMAINE}/pmescan-inexistant-[0-9a-f]+$").mock(
+        return_value=reponse
+    )
 
 
 def _executer():
@@ -111,6 +120,134 @@ def test_erreur_reseau_sur_un_chemin_ne_leve_pas():
     assert len(resultats) == 1
     assert resultats[0].identifiant == "aucun_fichier_expose"
     assert resultats[0].reussi is True
+
+
+# --- Faux positifs : une réponse 200 ne suffit pas ----------------------------
+
+
+@respx.mock
+def test_site_qui_repond_200_partout_n_est_pas_signale():
+    """Le serveur répond 200 et le même texte « CLE=valeur » à toute adresse : rien signalé."""
+    page_unique = httpx.Response(
+        200, text="APP=vitrine\n", headers={"content-type": "text/plain"}
+    )
+    for chemin in _CHEMINS:
+        respx.get(f"https://{DOMAINE}{chemin}").mock(return_value=page_unique)
+    _mocker_temoin(page_unique)
+
+    resultats = _executer()
+
+    assert [r.identifiant for r in resultats] == ["aucun_fichier_expose"]
+
+
+@respx.mock
+def test_env_en_html_n_est_pas_signale():
+    """/.env renvoie une page HTML contenant « CLE=… » (page d'erreur, article) : ignoré."""
+    _mocker_tout_en_404()
+    respx.get(f"https://{DOMAINE}/.env").mock(
+        return_value=httpx.Response(
+            200,
+            text="<!doctype html><html><body><pre>\nAPP_KEY=exemple\n</pre></body></html>",
+            headers={"content-type": "text/html"},
+        )
+    )
+
+    assert _par_identifiant(_executer(), "fichier_expose_env") is None
+
+
+@respx.mock
+def test_redirection_vers_l_accueil_n_est_pas_signalee():
+    """/.env redirige vers l'accueil : la réponse finale ne vient pas de /.env, ignorée."""
+    _mocker_tout_en_404()
+    respx.get(f"https://{DOMAINE}/.env").mock(
+        return_value=httpx.Response(302, headers={"location": f"https://{DOMAINE}/accueil"})
+    )
+    respx.get(f"https://{DOMAINE}/accueil").mock(
+        return_value=httpx.Response(200, text="BIENVENUE=1\n")
+    )
+
+    assert _par_identifiant(_executer(), "fichier_expose_env") is None
+
+
+@respx.mock
+def test_git_head_doit_avoir_le_format_exact():
+    """Une page qui contient « ref: » au milieu d'un texte n'est pas un .git/HEAD."""
+    _mocker_tout_en_404()
+    respx.get(f"https://{DOMAINE}/.git/HEAD").mock(
+        return_value=httpx.Response(200, text="ref: voir la documentation en ligne")
+    )
+
+    assert _par_identifiant(_executer(), "fichier_expose_git") is None
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("contenu", "type_contenu", "expose"),
+    [
+        (b"PK\x03\x04" + b"\x00" * 26, "application/octet-stream", True),
+        (b"<html>Page introuvable</html>", "application/zip", False),
+    ],
+    ids=["vraie_archive", "html_annonce_zip"],
+)
+def test_backup_zip_juge_sur_la_signature(contenu, type_contenu, expose):
+    """backup.zip : seule la signature ZIP compte, pas le Content-Type annoncé."""
+    _mocker_tout_en_404()
+    respx.get(f"https://{DOMAINE}/backup.zip").mock(
+        return_value=httpx.Response(200, content=contenu, headers={"content-type": type_contenu})
+    )
+
+    assert (_par_identifiant(_executer(), "fichier_expose_backup") is not None) is expose
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("page", "expose"),
+    [
+        ("<html><head><title>PHP 8.2.1 - phpinfo()</title></head></html>", True),
+        ("<html><body>Notre site tourne sous PHP Version 8.</body></html>", False),
+    ],
+    ids=["vraie_page_phpinfo", "simple_mention"],
+)
+def test_phpinfo_juge_sur_le_titre(page, expose):
+    """phpinfo.php : exige le titre « phpinfo() », pas une simple mention de PHP."""
+    _mocker_tout_en_404()
+    respx.get(f"https://{DOMAINE}/phpinfo.php").mock(return_value=httpx.Response(200, text=page))
+
+    assert (_par_identifiant(_executer(), "fichier_expose_phpinfo") is not None) is expose
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("page", "expose"),
+    [
+        ("<html><head><title>Index of /</title></head></html>", True),
+        ("<html><p>Comment désactiver la page Index of / sur Apache ?</p></html>", False),
+    ],
+    ids=["vrai_listing", "article"],
+)
+def test_listing_juge_sur_le_titre(page, expose):
+    """Listing : exige « Index of / » en titre ou en-tête, pas dans un paragraphe."""
+    _mocker_tout_en_404()
+    respx.get(f"https://{DOMAINE}/").mock(return_value=httpx.Response(200, text=page))
+
+    assert (_par_identifiant(_executer(), "fichier_expose_listing") is not None) is expose
+
+
+@respx.mock
+def test_lecture_bornee_a_la_taille_maximale():
+    """Un très gros fichier n'est pas téléchargé en entier : lecture limitée à _TAILLE_MAX."""
+    respx.get(f"https://{DOMAINE}/backup.zip").mock(
+        return_value=httpx.Response(200, content=b"PK\x03\x04" + b"x" * 1_000_000)
+    )
+
+    async def _executer_lecture():
+        async with httpx.AsyncClient() as client:
+            return await exposes_module._lire(client, f"https://{DOMAINE}/backup.zip")
+
+    page = asyncio.run(_executer_lecture())
+
+    assert page is not None
+    assert len(page.corps) == exposes_module._TAILLE_MAX
 
 
 # --- Défense en profondeur : appel direct sans autorisation ------------------

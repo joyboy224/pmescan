@@ -141,8 +141,12 @@ pmescan scan exemple.sn --mode actif --jai-l-autorisation
 
 En plus des vérifications passives, le mode actif fait les requêtes suivantes :
 
-- **Fichiers sensibles** : `/.git/HEAD`, `/.env`, `/backup.zip`, `/phpinfo.php`, et la
-  racine du site pour repérer un listing de répertoire. Soit 5 requêtes HTTP.
+- **Fichiers sensibles** : `/.git/HEAD`, `/.env`, `/backup.zip`, `/phpinfo.php`, la
+  racine du site pour repérer un listing de répertoire, et une adresse aléatoire
+  inexistante qui sert de témoin. Soit 6 requêtes HTTP, dont seuls les 64 premiers Ko
+  sont lus. Une réponse « 200 » ne suffit pas : le contenu doit ressembler au fichier
+  attendu, venir de ce chemin (pas d'une redirection) et différer de la réponse du
+  témoin.
 - **Fichiers de version du CMS** : au plus 7 requêtes HTTP, et seulement si la page
   d'accueil ne suffit pas à reconnaître le CMS. pmescan demande d'abord une adresse
   aléatoire inexistante. Si elle répond « 200 », le site répond 200 à tout, et pmescan
