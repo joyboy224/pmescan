@@ -137,8 +137,42 @@ pmescan scan exemple.sn --mode actif --jai-l-autorisation
 - En version 0.1, le mode `agressif` fait la même chose que le mode `actif` : il est
   réservé à de futures vérifications plus intrusives.
 
-Tout est détaillé dans **[README-mode-agressif.md](README-mode-agressif.md)** : requêtes
-envoyées, garde-fous, cadre légal, journal.
+### Requêtes envoyées à la cible
+
+En plus des vérifications passives, le mode actif fait les requêtes suivantes :
+
+- **Fichiers sensibles** : `/.git/HEAD`, `/.env`, `/backup.zip`, `/phpinfo.php`, et la
+  racine du site pour repérer un listing de répertoire. Soit 5 requêtes HTTP.
+- **Fichiers de version du CMS** : au plus 7 requêtes HTTP, et seulement si la page
+  d'accueil ne suffit pas à reconnaître le CMS. pmescan demande d'abord une adresse
+  aléatoire inexistante. Si elle répond « 200 », le site répond 200 à tout, et pmescan
+  s'arrête là. Sinon, il demande `readme.html`, `CHANGELOG.txt`, `core/CHANGELOG.txt`,
+  le manifeste Joomla et `/admin/`.
+- **WordPress uniquement** : `xmlrpc.php` et `/?author=1`, pour repérer la page XML-RPC et
+  l'énumération des comptes. Soit 2 requêtes HTTP.
+- **Ports TCP** : une tentative de connexion sur 30 ports connus. Aucune donnée n'est
+  envoyée après l'ouverture : la connexion est fermée tout de suite.
+
+Garde-fous intégrés : au plus **20 connexions simultanées**, **2 secondes** maximum par
+tentative, **une seule tentative** par port. Aucune tentative de mot de passe, aucun envoi
+de formulaire, aucune exploitation de faille.
+
+Le scan reste léger, mais il laisse des traces : la cible peut voir ces requêtes dans
+ses journaux, et un pare-feu peut bloquer votre adresse IP.
+
+### Journal de consentement
+
+Chaque scan autorisé ajoute une ligne au fichier `~/.pmescan/consent.log`, **avant** le
+début du scan. Chaque ligne contient trois champs séparés par des tabulations :
+l'horodatage UTC, le domaine et le mode.
+
+```
+2026-10-25T15:18:33+00:00	exemple.sn	actif
+```
+
+Ce journal reste sur votre machine : il n'est envoyé nulle part. Pour le déplacer, réglez
+la variable d'environnement `PMESCAN_DOSSIER`. Si le fichier ne peut pas être écrit,
+pmescan affiche un avertissement et poursuit le scan.
 
 ## Le rapport PDF
 
@@ -204,21 +238,22 @@ configurés sur votre machine.
   n'est donc pas une absence avérée, et il ne retire aucun point.
 - pmescan repère des failles courantes. Il ne remplace pas un audit de sécurité complet.
 
-## Documentation du projet
-
-| Fichier | Contenu |
-|---|---|
-| [README-mode-agressif.md](README-mode-agressif.md) | Modes intrusifs, garde d'autorisation, cadre légal. |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Comment contribuer. |
-
 ## Avertissement légal
 
 pmescan est un outil **défensif**. Le mode passif ne lit que des informations publiques.
 Les modes actif et agressif sollicitent la cible et ne doivent être utilisés qu'avec
 autorisation. Un usage non autorisé peut tomber sous le coup de la loi sénégalaise
 n° 2008-11 sur la cybercriminalité, ou de ses équivalents ailleurs (art. 323-1 du Code
-pénal français, CFAA aux États-Unis). **C'est à l'utilisateur de disposer des
-autorisations nécessaires.**
+pénal français, CFAA aux États-Unis).
+
+N'utilisez `--jai-l-autorisation` que si vous êtes propriétaire de la cible, ou si vous
+détenez une **autorisation écrite** de son propriétaire (mandat d'audit, contrat ou e-mail
+explicite) couvrant la période et le périmètre de l'analyse. Une autorisation verbale ne
+suffit pas : conservez la preuve écrite. En passant ce flag, vous déclarez remplir ces
+conditions.
+
+Ce logiciel est fourni « tel quel », sans garantie. **La responsabilité de disposer des
+autorisations nécessaires incombe entièrement à l'utilisateur.**
 
 ## Contribuer
 

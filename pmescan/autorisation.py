@@ -2,8 +2,8 @@
 
 Les modes ``actif`` et ``agressif`` sollicitent activement la cible : ils ne doivent
 s'exécuter que si l'utilisateur confirme être propriétaire de la cible ou disposer d'une
-autorisation écrite (voir ``README-mode-agressif.md``). Chaque scan intrusif autorisé est
-tracé localement dans ``~/.pmescan/consent.log``.
+autorisation écrite (voir le README, section « Modes actif et agressif »). Chaque scan
+intrusif autorisé est tracé localement dans ``~/.pmescan/consent.log``.
 """
 
 import os

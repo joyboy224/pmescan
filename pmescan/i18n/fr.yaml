@@ -590,7 +590,7 @@ cli:
     N'utilisez ce mode que sur une cible dont vous êtes propriétaire ou pour
     laquelle vous disposez d'une autorisation écrite de son propriétaire.
     Si c'est le cas, relancez la commande avec --jai-l-autorisation.
-    Voir README-mode-agressif.md. Aucune requête n'a été envoyée.
+    Voir le README, section « Modes actif et agressif ». Aucune requête n'a été envoyée.
   avertissement_journal: >-
     Avertissement : impossible d'écrire le journal de consentement ({erreur}).
     Le scan continue.
