@@ -17,6 +17,7 @@ from sslyze import (
 
 from pmescan.checks.base import Verification
 from pmescan.modele import Cible, Gravite, Resultat
+from pmescan.reseau import client_garde
 
 # Nombre de jours en dessous duquel on considère le certificat « proche expiration ».
 SEUIL_EXPIRATION_JOURS = 30
@@ -222,8 +223,13 @@ class VerificationTls(Verification):
             # verify=False délibéré : la validité du certificat est traitée plus haut par
             # sslyze. Ce client httpx ne teste que la joignabilité et la redirection, et
             # ne doit pas échouer sur un certificat invalide.
-            async with httpx.AsyncClient(
-                follow_redirects=True, timeout=10.0, verify=False
+            # Garde réseau : adresses publiques seulement, redirections comprises.
+            async with client_garde(
+                cible.domaine,
+                meme_site=False,
+                follow_redirects=True,
+                timeout=10.0,
+                verify=False,
             ) as client:
                 reponse = await client.get(url)
         except httpx.HTTPError as erreur:

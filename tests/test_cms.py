@@ -20,6 +20,7 @@ import pytest
 import pmescan.checks.cms as cms_module
 from pmescan.checks.cms import BRANCHES_MAINTENUES, VerificationCms, _branche_non_maintenue
 from pmescan.modele import Cible, Gravite
+from pmescan.reseau import TransportGarde
 
 DOMAINE = "exemple.com"
 _BASE = f"https://{DOMAINE}"
@@ -575,7 +576,8 @@ def test_client_osv_verifie_le_certificat_et_ne_suit_pas_les_redirections(
     """Le client OSV est créé avec verify=True et follow_redirects=False.
 
     On espionne httpx.AsyncClient (sous-classe qui enregistre ses arguments) : le client
-    de la cible garde verify=False, celui d'OSV est distinct et vérifié.
+    de la cible passe par la garde réseau (limité au site analysé), celui d'OSV est
+    distinct, sans garde de site (tiers fixe) et vérifié.
     """
     arguments: list[dict] = []
     vrai_client = httpx.AsyncClient
@@ -593,7 +595,8 @@ def test_client_osv_verifie_le_certificat_et_ne_suit_pas_les_redirections(
 
     assert len(arguments) == 2
     client_cible, client_osv = arguments
-    assert client_cible["verify"] is False
+    assert isinstance(client_cible["transport"], TransportGarde)
+    assert client_cible["transport"]._meme_site is True
     assert client_osv["verify"] is True
     assert client_osv["follow_redirects"] is False
 

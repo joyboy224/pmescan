@@ -11,6 +11,7 @@ import httpx
 
 from pmescan.checks.base import Verification
 from pmescan.modele import Cible, Gravite, Resultat
+from pmescan.reseau import client_garde
 
 # Motif d'une ligne de fichier .env : CLE_EN_MAJUSCULES=valeur.
 _MOTIF_ENV = re.compile(r"(?m)^[A-Z][A-Z0-9_]*=")
@@ -75,8 +76,10 @@ class VerificationFichiersExposes(Verification):
         # verify=False délibéré : la validité du certificat est traitée par le module
         # sslyze. Ce client httpx ne cherche que des fichiers exposés et ne doit pas
         # échouer sur un certificat invalide.
-        async with httpx.AsyncClient(
-            follow_redirects=True, timeout=10.0, verify=False
+        # Garde réseau : adresses publiques et hôtes du site analysé seulement. Une
+        # redirection ne peut pas entraîner ce check intrusif vers un site tiers.
+        async with client_garde(
+            cible.domaine, meme_site=True, follow_redirects=True, timeout=10.0, verify=False
         ) as client:
             for chemin, identifiant, gravite, validateur in _CIBLES:
                 resultat = await self._tester(

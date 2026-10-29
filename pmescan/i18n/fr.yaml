@@ -581,6 +581,16 @@ ports_hote_introuvable:
   effort: "15 min"
   action: "Vérifier que le domaine pointe bien vers votre serveur (enregistrement DNS A ou AAAA), puis relancer l'analyse."
 
+ports_cible_non_publique:
+  titre: "Test des ports annulé : le site pointe vers une adresse interne"
+  risque: >
+    Le nom de domaine renvoie vers une adresse privée ou locale (réseau interne,
+    machine elle-même). Par sécurité, pmescan ne teste jamais les ports d'une telle
+    adresse : il pourrait sonder des services internes au lieu du site public.
+  qui_corrige: "hebergeur"
+  effort: "15 min"
+  action: "Vérifier les enregistrements DNS A et AAAA du domaine : ils doivent pointer uniquement vers l'adresse publique du serveur."
+
 # --- Messages de la ligne de commande ----------------------------------------
 # Section à part (pas un identifiant de problème) : messages affichés par la CLI.
 
@@ -598,6 +608,11 @@ cli:
     Erreur : {domaine} n'est pas un nom de domaine valide. Indiquez seulement le
     nom du site, par exemple exemple.com, sans « https:// », sans chemin, sans
     port et sans adresse e-mail. Aucune requête n'a été envoyée.
+  cible_non_publique: >-
+    Refus : {domaine} pointe vers une adresse qui n'est pas publique ({adresses}).
+    Par sécurité, pmescan n'analyse que des sites joignables sur Internet : il
+    pourrait sinon sonder des services internes (votre machine, votre réseau local).
+    Aucune requête n'a été envoyée au site.
   erreur_pdf: >-
     Erreur : impossible d'écrire le rapport PDF ({chemin}). {erreur}
   interruption: >-

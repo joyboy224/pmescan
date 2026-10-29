@@ -8,7 +8,6 @@ partir du mode actif.
 """
 
 import asyncio
-import socket
 
 import pytest
 
@@ -17,9 +16,16 @@ import pmescan.scanner as scanner_module
 from pmescan.checks.ports import _CONCURRENCE_MAX, _PORTS, VerificationPorts
 from pmescan.modele import Cible, Gravite
 from pmescan.scanner import scanner
-from tests.conftest import ADRESSE_FACTICE, faux_open_connection, faux_resoudre
+from tests.conftest import (
+    ADRESSE_FACTICE,
+    ADRESSE_PUBLIQUE_FACTICE,
+    faux_open_connection,
+    faux_resoudre,
+)
 
 DOMAINE = "exemple.com"
+# Adresse IPv6 publique (les plages de documentation 2001:db8:: sont refusées par la garde).
+_IPV6_PUBLIQUE = "2606:2800:21f:cb07::1"
 
 
 def _ouverture_avec_delai_depasse(ports_ouverts, en_delai_depasse):
@@ -224,102 +230,87 @@ def test_hote_introuvable_donne_un_seul_resultat(monkeypatch):
     assert tentatives == []
 
 
-@pytest.mark.parametrize(
-    "erreur",
-    [socket.gaierror("nom inconnu"), UnicodeError("IDNA invalide")],
-    ids=["gaierror", "unicode"],
-)
-def test_resoudre_renvoie_none_sur_erreur(monkeypatch, erreur):
-    """_resoudre absorbe gaierror (OSError) et UnicodeError (ValueError) : renvoie None."""
+def test_resoudre_renvoie_none_si_nom_introuvable(resolution_factice):
+    """Nom introuvable (la résolution lève OSError) : _resoudre renvoie None."""
+    resolution_factice.clear()
 
-    async def _getaddrinfo(self, hote, port, *args, **kwargs):
-        raise erreur
-
-    # On remplace getaddrinfo de la boucle (aucune vraie requête DNS).
-    monkeypatch.setattr(asyncio.base_events.BaseEventLoop, "getaddrinfo", _getaddrinfo)
-
-    adresse = asyncio.run(VerificationPorts()._resoudre(DOMAINE))
-
-    assert adresse is None
-
-
-def test_resoudre_renvoie_la_premiere_adresse(monkeypatch):
-    """_resoudre renvoie l'IP de la première entrée getaddrinfo ; None si la liste est vide."""
-
-    async def _getaddrinfo(self, hote, port, *args, **kwargs):
-        return [
-            (socket.AF_INET, socket.SOCK_STREAM, 6, "", (ADRESSE_FACTICE, 0)),
-            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.99", 0)),
-        ]
-
-    monkeypatch.setattr(asyncio.base_events.BaseEventLoop, "getaddrinfo", _getaddrinfo)
-    assert asyncio.run(VerificationPorts()._resoudre(DOMAINE)) == ADRESSE_FACTICE
-
-    async def _getaddrinfo_vide(self, hote, port, *args, **kwargs):
-        return []
-
-    monkeypatch.setattr(asyncio.base_events.BaseEventLoop, "getaddrinfo", _getaddrinfo_vide)
     assert asyncio.run(VerificationPorts()._resoudre(DOMAINE)) is None
 
 
-def _info(famille, adresse):
-    """Entrée getaddrinfo factice : (famille, type, proto, nom canonique, adresse socket)."""
-    adresse_socket = (adresse, 0) if famille == socket.AF_INET else (adresse, 0, 0, 0)
-    return (famille, socket.SOCK_STREAM, 6, "", adresse_socket)
+def test_resoudre_renvoie_la_premiere_adresse(resolution_factice):
+    """_resoudre renvoie la première adresse publique résolue."""
+    resolution_factice[:] = [ADRESSE_PUBLIQUE_FACTICE, "93.184.215.99"]
+
+    assert asyncio.run(VerificationPorts()._resoudre(DOMAINE)) == ADRESSE_PUBLIQUE_FACTICE
 
 
-def test_resoudre_prefere_ipv4(monkeypatch):
-    """getaddrinfo renvoie IPv6 puis IPv4 : _resoudre choisit l'adresse IPv4."""
+def test_resoudre_prefere_ipv4(resolution_factice):
+    """Le DNS renvoie IPv6 puis IPv4 : _resoudre choisit l'adresse IPv4."""
+    resolution_factice[:] = [_IPV6_PUBLIQUE, ADRESSE_PUBLIQUE_FACTICE]
 
-    async def _getaddrinfo(self, hote, port, *args, **kwargs):
-        return [_info(socket.AF_INET6, "2001:db8::1"), _info(socket.AF_INET, ADRESSE_FACTICE)]
-
-    monkeypatch.setattr(asyncio.base_events.BaseEventLoop, "getaddrinfo", _getaddrinfo)
-
-    assert asyncio.run(VerificationPorts()._resoudre(DOMAINE)) == ADRESSE_FACTICE
+    assert asyncio.run(VerificationPorts()._resoudre(DOMAINE)) == ADRESSE_PUBLIQUE_FACTICE
 
 
-def test_resoudre_ipv6_seule(monkeypatch):
+def test_resoudre_ipv6_seule(resolution_factice):
     """Sans aucune adresse IPv4, _resoudre renvoie la première adresse IPv6."""
+    resolution_factice[:] = [_IPV6_PUBLIQUE, "2606:2800:21f:cb07::2"]
 
-    async def _getaddrinfo(self, hote, port, *args, **kwargs):
-        return [_info(socket.AF_INET6, "2001:db8::1"), _info(socket.AF_INET6, "2001:db8::2")]
-
-    monkeypatch.setattr(asyncio.base_events.BaseEventLoop, "getaddrinfo", _getaddrinfo)
-
-    assert asyncio.run(VerificationPorts()._resoudre(DOMAINE)) == "2001:db8::1"
+    assert asyncio.run(VerificationPorts()._resoudre(DOMAINE)) == _IPV6_PUBLIQUE
 
 
 def test_resoudre_delai_depasse_renvoie_none(monkeypatch):
     """Une résolution plus lente que le délai (ramené à 0,01 s) renvoie None, sans exception."""
     monkeypatch.setattr(ports_module, "_DELAI_CONNEXION", 0.01)
 
-    async def _getaddrinfo_lent(self, hote, port, *args, **kwargs):
+    async def _adresses_lentes(hote):
         await asyncio.sleep(1)
-        return [_info(socket.AF_INET, ADRESSE_FACTICE)]
+        return [ADRESSE_PUBLIQUE_FACTICE]
 
-    monkeypatch.setattr(asyncio.base_events.BaseEventLoop, "getaddrinfo", _getaddrinfo_lent)
+    monkeypatch.setattr(ports_module, "adresses_publiques", _adresses_lentes)
 
     assert asyncio.run(VerificationPorts()._resoudre(DOMAINE)) is None
 
 
-def test_resoudre_demande_sock_stream(monkeypatch):
-    """getaddrinfo est appelé pour l'hôte demandé, sans port, avec type=SOCK_STREAM."""
-    appels: list[tuple] = []
+@pytest.mark.parametrize(
+    "adresses",
+    [["127.0.0.1"], ["192.168.1.10"], [ADRESSE_PUBLIQUE_FACTICE, "10.0.0.5"]],
+    ids=["boucle_locale", "reseau_prive", "publique_et_privee"],
+)
+def test_cible_non_publique_aucun_port_teste(monkeypatch, resolution_factice, adresses):
+    """Garde réseau : une adresse non publique donne ports_cible_non_publique, sans connexion."""
+    resolution_factice[:] = adresses
+    tentatives: list[int] = []
 
-    async def _getaddrinfo(self, hote, port, *args, **kwargs):
-        appels.append((hote, port, kwargs))
-        return [_info(socket.AF_INET, ADRESSE_FACTICE)]
+    async def _ouvrir(hote, port):
+        tentatives.append(port)
+        raise OSError("ne doit pas être appelé")
 
-    monkeypatch.setattr(asyncio.base_events.BaseEventLoop, "getaddrinfo", _getaddrinfo)
+    monkeypatch.setattr(ports_module.asyncio, "open_connection", _ouvrir)
+    cible = Cible(domaine=DOMAINE, mode="actif", autorisation=True)
 
-    asyncio.run(VerificationPorts()._resoudre(DOMAINE))
+    resultats = asyncio.run(VerificationPorts().executer(cible))
 
-    assert len(appels) == 1
-    hote, port, kwargs = appels[0]
-    assert hote == DOMAINE
-    assert port is None
-    assert kwargs.get("type") == socket.SOCK_STREAM
+    assert [r.identifiant for r in resultats] == ["ports_cible_non_publique"]
+    assert resultats[0].reussi is False
+    assert resultats[0].gravite is Gravite.INFO
+    assert tentatives == []
+
+
+def test_ip_figee_non_publique_refusee(monkeypatch):
+    """Cible.ip privée (posée à la main via l'API Python) : aucun port n'est testé."""
+    tentatives: list[int] = []
+
+    async def _ouvrir(hote, port):
+        tentatives.append(port)
+        raise OSError("ne doit pas être appelé")
+
+    monkeypatch.setattr(ports_module.asyncio, "open_connection", _ouvrir)
+    cible = Cible(domaine=DOMAINE, ip="127.0.0.1", mode="actif", autorisation=True)
+
+    resultats = asyncio.run(VerificationPorts().executer(cible))
+
+    assert [r.identifiant for r in resultats] == ["ports_cible_non_publique"]
+    assert tentatives == []
 
 
 # --- Défense en profondeur : appel direct sans autorisation ------------------

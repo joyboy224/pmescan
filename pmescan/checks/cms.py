@@ -26,6 +26,7 @@ import httpx
 
 from pmescan.checks.base import Verification
 from pmescan.modele import Cible, Gravite, Resultat
+from pmescan.reseau import client_garde
 
 # Branches majeures encore maintenues (correctifs de sécurité) pour chaque CMS suivi.
 # Table de meilleur effort, à vérifier sur les sites officiels, dernière mise à jour :
@@ -145,8 +146,10 @@ class VerificationCms(Verification):
         # sslyze. Ce client httpx ne lit que des pages publiques de la CIBLE pour
         # identifier le CMS et ne doit pas échouer sur un certificat invalide. Il n'est
         # jamais utilisé pour parler à un tiers (OSV a son propre client, vérifié).
-        async with httpx.AsyncClient(
-            follow_redirects=True, timeout=10.0, verify=False
+        # Garde réseau : adresses publiques et hôtes du site analysé seulement. Une
+        # redirection ne peut pas entraîner les sondes vers un site tiers.
+        async with client_garde(
+            cible.domaine, meme_site=True, follow_redirects=True, timeout=10.0, verify=False
         ) as client:
             cms, version = await self._detecter(client, base, sonde_autorisee)
             if cms is None:

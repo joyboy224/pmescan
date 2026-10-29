@@ -17,6 +17,7 @@ from pmescan.i18n import charger_textes
 from pmescan.modele import Cible, Gravite, Resultat
 from pmescan.notation import calculer_note
 from pmescan.rapport.generateur import construire_contexte, ecrire_pdf, rendre_html
+from pmescan.reseau import CibleNonPublique, adresses_publiques, choisir_adresse
 from pmescan.scanner import scanner
 
 # Codes de sortie de la commande scan (voir README.md).
@@ -157,8 +158,12 @@ def scan(
     Le domaine est validé et normalisé (minuscules, IDN en forme ASCII) avant tout :
     une URL, une adresse e-mail, un port ou un chemin sont refusés avec le code 2.
 
+    Garde réseau : un domaine qui pointe vers une adresse privée, locale ou réservée
+    (127.0.0.1, 192.168.x.x, 169.254.169.254…) est refusé avec le code 2.
+
     Codes de sortie : 0 aucun problème critique, 1 au moins un problème critique,
-    2 erreur (domaine invalide, PDF impossible, interruption, erreur imprévue),
+    2 erreur (domaine invalide, cible non publique, PDF impossible, interruption,
+    erreur imprévue),
     3 refus (mode intrusif sans autorisation).
     """
     # Filet de sécurité : toute exception imprévue devient un message clair et le code 2,
@@ -214,6 +219,24 @@ def _executer_scan(
             )
             raise typer.Exit(code=CODE_REFUS)
         intrusif_autorise = True
+
+    # 3) Garde réseau : une cible qui pointe vers une adresse privée, locale ou réservée
+    # est refusée avant tout scan (et avant le journal : rien n'est analysé).
+    try:
+        adresses = asyncio.run(adresses_publiques(domaine))
+    except CibleNonPublique as erreur:
+        typer.echo(
+            _message_cli(
+                "cible_non_publique", domaine=domaine, adresses=", ".join(erreur.adresses)
+            ),
+            err=True,
+        )
+        raise typer.Exit(code=CODE_ERREUR) from None
+    except OSError:
+        # Domaine introuvable : le scan continue, chaque vérification le signalera.
+        adresses = []
+
+    if intrusif_autorise:
         try:
             journaliser_consentement(domaine, mode)
         except OSError as erreur:
@@ -221,8 +244,11 @@ def _executer_scan(
 
     # autorisation=True seulement si le flag est passé EN mode intrusif : le scanner et le
     # check cms n'exécutent aucune requête intrusive sans cette confirmation explicite.
+    # ip : adresse publique vérifiée, figée pour sslyze et le scan de ports (aucune
+    # nouvelle résolution DNS qui pourrait viser une autre adresse).
     cible = Cible(
         domaine=domaine,
+        ip=choisir_adresse(adresses),
         mode=mode.value,
         verifier_cve=verifier_cve,
         autorisation=intrusif_autorise,

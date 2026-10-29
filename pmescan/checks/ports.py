@@ -7,10 +7,10 @@ bornée par un sémaphore.
 """
 
 import asyncio
-import socket
 
 from pmescan.checks.base import Verification
 from pmescan.modele import Cible, Gravite, Resultat
+from pmescan.reseau import CibleNonPublique, adresses_publiques, choisir_adresse
 
 # Délai maximal d'une tentative de connexion TCP (secondes).
 _DELAI_CONNEXION = 2.0
@@ -77,7 +77,19 @@ class VerificationPorts(Verification):
 
         # Résolution UNIQUE avant la boucle : toutes les connexions visent la même adresse,
         # et un nom introuvable donne un seul résultat au lieu de trente échecs.
-        adresse = await self._resoudre(hote)
+        try:
+            adresse = await self._resoudre(hote)
+        except CibleNonPublique as erreur:
+            # Garde réseau : aucun port d'une adresse privée ou locale n'est testé.
+            return [
+                Resultat(
+                    identifiant="ports_cible_non_publique",
+                    gravite=Gravite.INFO,
+                    reussi=False,
+                    preuve=str(erreur),
+                    details={"hote": hote, "adresses": erreur.adresses},
+                )
+            ]
         if adresse is None:
             return [
                 Resultat(
@@ -123,27 +135,18 @@ class VerificationPorts(Verification):
         return resultats
 
     async def _resoudre(self, hote: str) -> str | None:
-        """Résout ``hote`` en une adresse IP, sinon None.
+        """Résout ``hote`` en une adresse IP publique, sinon None.
 
-        On préfère la première adresse IPv4 (AF_INET) ; à défaut, la première renvoyée.
-        La résolution est bornée par _DELAI_CONNEXION. Aucune exception ne remonte : un nom
-        introuvable, invalide ou trop lent à résoudre renvoie None.
+        On préfère la première adresse IPv4 ; à défaut, la première renvoyée. La
+        résolution est bornée par _DELAI_CONNEXION. Un nom introuvable, invalide ou trop
+        lent à résoudre renvoie None. Lève CibleNonPublique si une adresse n'est pas
+        publique (garde réseau, voir pmescan.reseau).
         """
         try:
-            infos = await asyncio.wait_for(
-                asyncio.get_running_loop().getaddrinfo(hote, None, type=socket.SOCK_STREAM),
-                _DELAI_CONNEXION,
-            )
-        except (TimeoutError, OSError, ValueError):
-            # socket.gaierror (nom inconnu) hérite d'OSError ; un nom mal formé (IDNA)
-            # lève UnicodeError, sous-classe de ValueError.
+            adresses = await asyncio.wait_for(adresses_publiques(hote), _DELAI_CONNEXION)
+        except (TimeoutError, OSError):
             return None
-        if not infos:
-            return None
-        for famille, _, _, _, adresse_socket in infos:
-            if famille == socket.AF_INET:
-                return str(adresse_socket[0])
-        return str(infos[0][4][0])
+        return choisir_adresse(adresses)
 
     async def _tester_port(
         self, adresse: str, port: int, semaphore: asyncio.Semaphore

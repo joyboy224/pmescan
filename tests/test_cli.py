@@ -599,6 +599,70 @@ def test_forcer_utf8_ignore_un_flux_sans_reconfigure(monkeypatch):
     assert sys.stdout is flux
 
 
+# --- Garde réseau : cible non publique ---------------------------------------
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [[], ["--mode", "actif", "--jai-l-autorisation"]],
+    ids=["passif", "actif"],
+)
+def test_cli_cible_non_publique_refusee(
+    monkeypatch, resolution_factice, dossier_journal, arguments
+):
+    """Domaine pointant vers 127.0.0.1 : refus, code 2, aucun scan, aucun journal."""
+    resolution_factice[:] = ["127.0.0.1"]
+    appels: list = []
+
+    async def _scanner_espion(cible):
+        appels.append(cible)
+        return []
+
+    monkeypatch.setattr(cli_module, "scanner", _scanner_espion)
+
+    resultat = runner.invoke(app, ["scan", "exemple.com", *arguments])
+
+    assert resultat.exit_code == 2
+    assert "127.0.0.1" in resultat.stderr
+    assert "pas publique" in resultat.stderr
+    assert appels == []
+    assert not (dossier_journal / "consent.log").exists()
+
+
+def test_cli_fige_l_adresse_publique_verifiee(monkeypatch, resolution_factice):
+    """L'adresse vérifiée (IPv4 préférée) est figée dans Cible.ip pour sslyze et les ports."""
+    resolution_factice[:] = ["2606:2800:21f:cb07::1", "93.184.215.14"]
+    cibles: list = []
+
+    async def _scanner_espion(cible):
+        cibles.append(cible)
+        return []
+
+    monkeypatch.setattr(cli_module, "scanner", _scanner_espion)
+
+    resultat = runner.invoke(app, ["scan", "exemple.com"])
+
+    assert resultat.exit_code == 0
+    assert cibles[0].ip == "93.184.215.14"
+
+
+def test_cli_domaine_introuvable_continue_sans_ip(monkeypatch, resolution_factice):
+    """Domaine introuvable : le scan continue (les checks le signalent), sans ip figée."""
+    resolution_factice.clear()
+    cibles: list = []
+
+    async def _scanner_espion(cible):
+        cibles.append(cible)
+        return []
+
+    monkeypatch.setattr(cli_module, "scanner", _scanner_espion)
+
+    resultat = runner.invoke(app, ["scan", "exemple.com"])
+
+    assert resultat.exit_code == 0
+    assert cibles[0].ip is None
+
+
 def test_cli_sortie_redirigee_reste_en_utf8(dossier_journal):
     """Sortie redirigée avec un encodage local cp1252 : les octets écrits restent UTF-8.
 

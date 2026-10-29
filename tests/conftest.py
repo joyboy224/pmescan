@@ -169,3 +169,31 @@ def faux_resoudre(adresse: str | None = ADRESSE_FACTICE):
         return adresse
 
     return _resoudre
+
+
+# --- Garde réseau : résolution DNS factice -----------------------------------
+
+# Adresse publique factice renvoyée par la fausse résolution de pmescan.reseau. Elle doit
+# être publique (contrairement à ADRESSE_FACTICE, en TEST-NET) pour passer la garde.
+ADRESSE_PUBLIQUE_FACTICE = "93.184.215.14"
+
+
+@pytest.fixture(autouse=True)
+def resolution_factice(monkeypatch):
+    """Remplace la résolution DNS de la garde réseau pour TOUS les tests : aucun vrai DNS.
+
+    Chaque nom résout vers les adresses de la liste renvoyée (par défaut
+    ADRESSE_PUBLIQUE_FACTICE). Un test la modifie pour simuler un autre DNS, par exemple
+    ``resolution_factice[:] = ["127.0.0.1"]``. Une liste vide simule un nom introuvable.
+    """
+    import pmescan.reseau as reseau
+
+    adresses = [ADRESSE_PUBLIQUE_FACTICE]
+
+    async def _resoudre(hote):
+        if not adresses:
+            raise OSError(f"nom introuvable : {hote}")
+        return list(adresses)
+
+    monkeypatch.setattr(reseau, "resoudre", _resoudre)
+    return adresses

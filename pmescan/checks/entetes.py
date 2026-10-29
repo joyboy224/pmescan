@@ -6,6 +6,7 @@ import httpx
 
 from pmescan.checks.base import Verification
 from pmescan.modele import Cible, Gravite, Resultat
+from pmescan.reseau import client_garde
 
 # En-têtes de sécurité attendus : (nom HTTP, identifiant absent, identifiant présent, gravité).
 _ENTETES_ATTENDUS: tuple[tuple[str, str, str, Gravite], ...] = (
@@ -76,8 +77,9 @@ class VerificationEntetes(Verification):
         # verify=False délibéré : la validité du certificat est traitée par le module
         # sslyze. Ce client httpx ne lit que les en-têtes et ne doit pas échouer sur
         # un certificat invalide.
-        async with httpx.AsyncClient(
-            follow_redirects=True, timeout=10.0, verify=False
+        # Garde réseau : adresses publiques seulement, redirections comprises.
+        async with client_garde(
+            cible.domaine, meme_site=False, follow_redirects=True, timeout=10.0, verify=False
         ) as client:
             return await client.get(url)
 
